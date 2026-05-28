@@ -1,0 +1,22 @@
+GLADOS_ACCOUNTS=[{"name":"account-1","cookie":"koa:sess=YOUR_SESSION;koa:sess.sig=YOUR_SIGNATURE"}]
+
+# Optional manual endpoint protection
+ADMIN_TOKEN=replace-with-a-long-random-token
+
+# Optional runtime tuning
+CHECKIN_CONCURRENCY=2
+CHECKIN_RETRIES=3
+ENABLE_MANUAL_ENDPOINTS=false
+NOTIFY_ON_STATUS_ONLY=false
+
+# Optional DingTalk notification
+DINGTALK_WEBHOOK=https://oapi.dingtalk.com/robot/send?access_token=YOUR_ACCESS_TOKEN
+DINGTALK_SECRET=SECxxxxxxxxxxxxxxxx
+
+# Optional Telegram notification
+TELEGRAM_BOT_TOKEN=123456789:YOUR_BOT_TOKEN
+TELEGRAM_CHAT_ID=123456789
+
+# Optional Feishu notification
+FEISHU_WEBHOOK=https://open.feishu.cn/open-apis/bot/v2/hook/YOUR_HOOK_ID
+FEISHU_SECRET=YOUR_FEISHU_SIGNING_SECRET
