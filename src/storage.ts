@@ -100,17 +100,17 @@ h1{font-size:24px;margin:0 0 12px}
 .summary{margin:0 0 18px;font-weight:600}
 .table-wrap{width:100%;overflow-x:auto;border:1px solid #d8deea;border-radius:8px;background:#fff}
 table{width:100%;min-width:1120px;border-collapse:collapse;background:#fff;table-layout:fixed}
-th,td{border-bottom:1px solid #d8deea;border-right:1px solid #d8deea;padding:10px;text-align:left;font-size:14px;vertical-align:top}
+th,td{border-bottom:1px solid #d8deea;border-right:1px solid #d8deea;padding:10px;text-align:center;font-size:14px;vertical-align:middle;overflow-wrap:anywhere;word-break:normal}
 th:last-child,td:last-child{border-right:0}
 tbody tr:last-child td{border-bottom:0}
 th{background:#eef2f8}
-.col-time{width:140px;white-space:nowrap}
-.col-account{width:260px;word-break:break-word}
-.col-status{width:150px;white-space:nowrap}
+.col-time{width:140px;white-space:normal}
+.col-account{width:260px}
+.col-status{width:150px;white-space:normal}
 .col-points{width:72px;white-space:nowrap}
 .col-days{width:84px;white-space:nowrap}
 .col-trigger{width:92px;white-space:nowrap}
-.col-message{width:auto;min-width:320px;line-height:1.45}
+.col-message{width:auto;min-width:320px;line-height:1.45;text-align:left}
 @media (max-width:760px){main{padding:16px}.table-wrap{border-radius:6px}th,td{font-size:13px;padding:9px}}
 </style>
 </head>

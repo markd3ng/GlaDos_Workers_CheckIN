@@ -70,6 +70,10 @@ describe("checkin log storage", () => {
     expect(html).toContain('class="col-time"');
     expect(html).toContain('class="col-account"');
     expect(html).toContain('class="col-message"');
+    expect(html).toContain("text-align:center");
+    expect(html).toContain("vertical-align:middle");
+    expect(html).toContain("overflow-wrap:anywhere");
+    expect(html).toContain(".col-status{width:150px;white-space:normal");
   });
 });
 
