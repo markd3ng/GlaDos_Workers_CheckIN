@@ -100,17 +100,59 @@ Token 的 Account Resources 限制到当前账号即可，不需要 All accounts
 
 ### Cloudflare 侧 Variables / Secrets
 
-运行时配置继续放 Cloudflare，不放 GitHub：
+运行时配置继续放 Cloudflare，不放 GitHub。最重要的是 `GLADOS_ACCOUNTS`。
+
+`GLADOS_ACCOUNTS` 不是邮箱，也不是密码。它是一个 JSON 字符串数组，每个账号只需要：
+
+- `name`：你自己给账号起的显示名称。
+- `cookie`：登录 GLaDOS 后从浏览器请求头复制出来的完整 Cookie。
+
+单账号示例：
+
+```json
+[
+  {
+    "name": "main",
+    "cookie": "koa:sess=YOUR_SESSION;koa:sess.sig=YOUR_SIGNATURE"
+  }
+]
+```
+
+多账号示例：
+
+```json
+[
+  {
+    "name": "account-1",
+    "cookie": "koa:sess=ACCOUNT_1_SESSION;koa:sess.sig=ACCOUNT_1_SIGNATURE"
+  },
+  {
+    "name": "account-2",
+    "cookie": "koa:sess=ACCOUNT_2_SESSION;koa:sess.sig=ACCOUNT_2_SIGNATURE"
+  }
+]
+```
+
+在 Cloudflare Dashboard 里配置时：
+
+1. 打开 Worker。
+2. 进入 Settings。
+3. 打开 Variables and Secrets。
+4. 新增变量 `GLADOS_ACCOUNTS`。
+5. 类型建议选 Secret。
+6. Value 粘贴上面的 JSON，注意最外层是 `[` 和 `]`。
+
+运行时变量清单：
 
 ```text
-GLADOS_ACCOUNTS
-ADMIN_TOKEN
-DINGTALK_WEBHOOK
-DINGTALK_SECRET
-TELEGRAM_BOT_TOKEN
-TELEGRAM_CHAT_ID
-FEISHU_WEBHOOK
-FEISHU_SECRET
+GLADOS_ACCOUNTS       必填，JSON 字符串数组，保存账号名称和 Cookie
+ADMIN_TOKEN           可选，启用手动端点时用于鉴权
+DINGTALK_WEBHOOK      可选，钉钉机器人 Webhook
+DINGTALK_SECRET       可选，钉钉机器人加签密钥
+TELEGRAM_BOT_TOKEN    可选，Telegram Bot Token
+TELEGRAM_CHAT_ID      可选，Telegram Chat ID
+FEISHU_WEBHOOK        可选，飞书机器人 Webhook
+FEISHU_SECRET         可选，飞书机器人签名密钥
 ```
 
 简单说：
@@ -120,7 +162,9 @@ FEISHU_SECRET
 
 ## 配置账号
 
-必填变量：
+本项目只支持 Cookie 登录态，不支持账号密码登录。不要填写邮箱和密码。
+
+必填变量是 `GLADOS_ACCOUNTS`：
 
 ```bash
 GLADOS_ACCOUNTS='[
@@ -134,7 +178,7 @@ GLADOS_ACCOUNTS='[
 字段说明：
 
 - `name`：账号显示名称，只用于日志和通知。
-- `cookie`：GLaDOS 登录后的完整 Cookie。
+- `cookie`：GLaDOS 登录后的完整 Cookie，不是邮箱，不是密码。
 
 不支持以下配置：
 
