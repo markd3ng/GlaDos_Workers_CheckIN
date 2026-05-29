@@ -3,4 +3,5 @@ node_modules/
 .wrangler/
 dist/
 coverage/
+docs/superpowers/
 *.log
