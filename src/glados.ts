@@ -2,6 +2,7 @@ import type { AccountConfig, AccountRunResult, CheckinStatus, Fetcher } from "./
 
 const CHECKIN_URL = "https://glados.rocks/api/user/checkin";
 const STATUS_URL = "https://glados.rocks/api/user/status";
+const POINTS_URL = "https://glados.rocks/api/user/points";
 const USER_AGENT =
   "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36";
 
@@ -27,7 +28,7 @@ export function classifyCheckinResponse(httpStatus: number, data: unknown): Acco
   }
 
   if (code === 0 || lowerMessage.includes("checkin! got")) {
-    return { status: "success", message: message || "Check-in succeeded", httpStatus };
+    return { status: "success", message: message || "Check-in succeeded", httpStatus, earnedPoints: extractPoints(message) };
   }
 
   if (
@@ -36,7 +37,7 @@ export function classifyCheckinResponse(httpStatus: number, data: unknown): Acco
     lowerMessage.includes("repeats") ||
     lowerMessage.includes("today")
   ) {
-    return { status: "already_checked_in", message: message || "Already checked in", httpStatus };
+    return { status: "already_checked_in", message: message || "Already checked in", httpStatus, earnedPoints: 0 };
   }
 
   return { status: "failed", message: message || `Unexpected response (HTTP ${httpStatus})`, httpStatus };
@@ -62,11 +63,28 @@ export async function checkAccountStatus(
   }
 
   const leftDays = extractLeftDays(data);
-  if (!leftDays) {
-    return { message: safeMessage(data) || "Status response did not include remaining days" };
+  const points = await checkAccountPoints(account, fetcher);
+  if (!leftDays && !points) {
+    return { message: safeMessage(data) || "Status response did not include remaining days or points" };
   }
 
-  return { leftDays };
+  return { leftDays, points };
+}
+
+async function checkAccountPoints(account: AccountConfig, fetcher: Fetcher): Promise<string | undefined> {
+  try {
+    const response = await fetcher(POINTS_URL, {
+      method: "GET",
+      headers: buildGladosHeaders(account.cookie)
+    });
+    const data = await readJson(response);
+    if (!response.ok) {
+      return undefined;
+    }
+    return extractAccountPoints(data);
+  } catch {
+    return undefined;
+  }
 }
 
 export async function performAccountRun(
@@ -190,6 +208,41 @@ function extractLeftDays(data: unknown): string | undefined {
   if (typeof value !== "string" && typeof value !== "number") {
     return undefined;
   }
+  const numeric = Number.parseFloat(String(value));
+  if (!Number.isFinite(numeric)) {
+    return String(value);
+  }
+  return Number.isInteger(numeric) ? String(numeric) : numeric.toFixed(8).replace(/\.?0+$/, "");
+}
+
+function extractAccountPoints(data: unknown): string | undefined {
+  const value = findPointValue(data);
+  if (typeof value !== "string" && typeof value !== "number") {
+    return undefined;
+  }
+  return normalizeNumericString(value);
+}
+
+function findPointValue(value: unknown): unknown {
+  if (!isRecord(value)) {
+    return value;
+  }
+  if (typeof value.points === "string" || typeof value.points === "number") {
+    return value.points;
+  }
+  if (typeof value.point === "string" || typeof value.point === "number") {
+    return value.point;
+  }
+  if (typeof value.balance === "string" || typeof value.balance === "number") {
+    return value.balance;
+  }
+  if ("data" in value) {
+    return findPointValue(value.data);
+  }
+  return undefined;
+}
+
+function normalizeNumericString(value: string | number): string {
   const numeric = Number.parseFloat(String(value));
   if (!Number.isFinite(numeric)) {
     return String(value);

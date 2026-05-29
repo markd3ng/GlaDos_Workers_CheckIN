@@ -9,7 +9,7 @@ type JsonBody = {
     succeeded: number;
     failed: number;
   };
-  results?: Array<{ accountStatus?: { leftDays?: string } }>;
+  results?: Array<{ accountStatus?: { leftDays?: string; points?: string }; checkin?: { earnedPoints?: number } }>;
 };
 
 const env = {
@@ -49,6 +49,9 @@ describe("worker routes", () => {
     expect(html).toContain("min-height:520px");
     expect(html).toContain("account-cell");
     expect(html).toContain("message-cell");
+    expect(html).toContain("账号 Points");
+    expect(html).toContain("签到收益");
+    expect(html).toContain("formatSignedPoints");
     expect(html).toContain('class="endpoint-link" data-method="GET" data-action="/health"');
     expect(html).toContain('class="endpoint-link" data-method="GET" data-action="/status"');
     expect(html).toContain('class="endpoint-link" data-method="POST" data-action="/test"');
@@ -102,15 +105,20 @@ describe("worker routes", () => {
   });
 
   it("queries status without calling the checkin endpoint", async () => {
-    const fetcher = vi.spyOn(globalThis, "fetch").mockResolvedValueOnce(jsonResponse({ data: { leftDays: "30" } }));
+    const fetcher = vi
+      .spyOn(globalThis, "fetch")
+      .mockResolvedValueOnce(jsonResponse({ data: { leftDays: "30" } }))
+      .mockResolvedValueOnce(jsonResponse({ data: { points: "66.6000" } }));
 
     const response = await worker.fetch(new Request("https://worker.test/status", { headers: { Authorization: basicAuth } }), env);
     const body = (await response.json()) as JsonBody;
 
     expect(response.status).toBe(200);
     expect(body.results?.[0]?.accountStatus?.leftDays).toBe("30");
-    expect(fetcher).toHaveBeenCalledTimes(1);
+    expect(body.results?.[0]?.accountStatus?.points).toBe("66.6");
+    expect(fetcher).toHaveBeenCalledTimes(2);
     expect(String(fetcher.mock.calls[0]?.[0])).toBe("https://glados.rocks/api/user/status");
+    expect(String(fetcher.mock.calls[1]?.[0])).toBe("https://glados.rocks/api/user/points");
   });
 
   it("runs checkin without notification on /checkin, tests configured notifications on /test, and notifies on /run", async () => {
@@ -118,12 +126,15 @@ describe("worker routes", () => {
       .spyOn(globalThis, "fetch")
       .mockResolvedValueOnce(jsonResponse({ code: 0, message: "Checkin! Got 1 Points" }))
       .mockResolvedValueOnce(jsonResponse({ data: { leftDays: "10" } }))
+      .mockResolvedValueOnce(jsonResponse({ data: { points: "101" } }))
       .mockResolvedValueOnce(jsonResponse({ code: 0, message: "Checkin! Got 1 Points" }))
       .mockResolvedValueOnce(jsonResponse({ data: { leftDays: "10" } }))
+      .mockResolvedValueOnce(jsonResponse({ data: { points: "102" } }))
       .mockResolvedValueOnce(jsonResponse({ ok: true }))
       .mockResolvedValueOnce(jsonResponse({ ok: false }, 500))
       .mockResolvedValueOnce(jsonResponse({ code: 0, message: "Checkin! Got 1 Points" }))
       .mockResolvedValueOnce(jsonResponse({ data: { leftDays: "10" } }))
+      .mockResolvedValueOnce(jsonResponse({ data: { points: "103" } }))
       .mockResolvedValueOnce(jsonResponse({ ok: true }));
 
     const checkin = await worker.fetch(
@@ -154,9 +165,11 @@ describe("worker routes", () => {
     ]);
     expect(testBody.notificationSummary).toEqual({ configured: 2, attempted: 2, succeeded: 1, failed: 1 });
     expect(testBody.results?.[0]?.accountStatus?.leftDays).toBe("10");
+    expect(testBody.results?.[0]?.accountStatus?.points).toBe("102");
+    expect(testBody.results?.[0]?.checkin?.earnedPoints).toBe(1);
     expect(run.status).toBe(200);
     expect(((await run.json()) as JsonBody).notifications).toEqual([{ channel: "feishu", ok: true }]);
-    expect(fetcher).toHaveBeenCalledTimes(9);
+    expect(fetcher).toHaveBeenCalledTimes(12);
   });
 
   it("returns 404 JSON for unknown routes", async () => {
@@ -170,7 +183,8 @@ describe("worker routes", () => {
     const fetcher = vi
       .spyOn(globalThis, "fetch")
       .mockResolvedValueOnce(jsonResponse({ code: 0, message: "Checkin! Got 1 Points" }))
-      .mockResolvedValueOnce(jsonResponse({ data: { leftDays: "10" } }));
+      .mockResolvedValueOnce(jsonResponse({ data: { leftDays: "10" } }))
+      .mockResolvedValueOnce(jsonResponse({ data: { points: "99" } }));
 
     await worker.scheduled({ cron: "0 0 * * *", scheduledTime: Date.now(), type: "scheduled" }, env, {
       waitUntil: vi.fn(),
@@ -178,7 +192,7 @@ describe("worker routes", () => {
       props: {}
     });
 
-    expect(fetcher).toHaveBeenCalledTimes(2);
+    expect(fetcher).toHaveBeenCalledTimes(3);
   });
 });
 

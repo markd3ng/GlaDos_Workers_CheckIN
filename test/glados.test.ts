@@ -49,14 +49,24 @@ describe("extractPoints", () => {
 });
 
 describe("GLaDOS account operations", () => {
-  it("queries remaining days from status response", async () => {
-    const fetcher = vi.fn().mockResolvedValue(jsonResponse({ data: { leftDays: "12.3400" } }));
+  it("queries remaining days and account points from status responses", async () => {
+    const fetcher = vi
+      .fn()
+      .mockResolvedValueOnce(jsonResponse({ data: { leftDays: "12.3400" } }))
+      .mockResolvedValueOnce(jsonResponse({ data: { points: "88.5000" } }));
 
     const status = await checkAccountStatus(account, fetcher);
 
     expect(status?.leftDays).toBe("12.34");
-    expect(fetcher).toHaveBeenCalledWith(
+    expect(status?.points).toBe("88.5");
+    expect(fetcher).toHaveBeenNthCalledWith(
+      1,
       "https://glados.rocks/api/user/status",
+      expect.objectContaining({ method: "GET", headers: expect.objectContaining({ Cookie: account.cookie }) })
+    );
+    expect(fetcher).toHaveBeenNthCalledWith(
+      2,
+      "https://glados.rocks/api/user/points",
       expect.objectContaining({ method: "GET", headers: expect.objectContaining({ Cookie: account.cookie }) })
     );
   });
@@ -66,13 +76,16 @@ describe("GLaDOS account operations", () => {
       .fn()
       .mockResolvedValueOnce(jsonResponse({ message: "server down" }, 500))
       .mockResolvedValueOnce(jsonResponse({ code: 0, message: "Checkin! Got 1 Points" }))
-      .mockResolvedValueOnce(jsonResponse({ data: { leftDays: "20" } }));
+      .mockResolvedValueOnce(jsonResponse({ data: { leftDays: "20" } }))
+      .mockResolvedValueOnce(jsonResponse({ data: { points: 100 } }));
 
     const result = await performAccountRun(account, { retries: 2, fetcher, sleep: async () => undefined });
 
     expect(result.checkin.status).toBe("success");
+    expect(result.checkin.earnedPoints).toBe(1);
     expect(result.accountStatus?.leftDays).toBe("20");
-    expect(fetcher).toHaveBeenCalledTimes(3);
+    expect(result.accountStatus?.points).toBe("100");
+    expect(fetcher).toHaveBeenCalledTimes(4);
   });
 
   it("does not retry expired cookies", async () => {
@@ -93,6 +106,7 @@ describe("GLaDOS account operations", () => {
       .fn()
       .mockResolvedValueOnce(jsonResponse({ code: 0, message: "Checkin! Got 1 Points" }))
       .mockResolvedValueOnce(jsonResponse({ data: { leftDays: "10" } }))
+      .mockResolvedValueOnce(jsonResponse({ data: { points: 9 } }))
       .mockResolvedValueOnce(jsonResponse({ message: "Please login first" }));
 
     const results = await runAccounts(accounts, { concurrency: 1, retries: 1, fetcher, sleep: async () => undefined });

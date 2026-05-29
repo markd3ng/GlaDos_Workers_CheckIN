@@ -31,9 +31,18 @@ export function formatPlainReport(report: RunReport): string {
 function formatAccountLine(result: AccountRunResult): string {
   const label = statusLabel(result.checkin.status);
   const days = result.accountStatus?.leftDays ? `，剩余 ${result.accountStatus.leftDays} 天` : "";
+  const points = result.accountStatus?.points ? `，账号 Points：${result.accountStatus.points}` : "";
+  const earned = `，签到收益：${formatSignedPoints(result.checkin.earnedPoints)}`;
   return `${result.accountName}：${label}，${result.checkin.message}${days}，Cookie 状态：${cookieStatusLabel(
     result.checkin.status
-  )}，Cookie 到期时间：未知`;
+  )}，Cookie 到期时间：未知${points}${earned}`;
+}
+
+function formatSignedPoints(value: number | undefined): string {
+  if (!value || value <= 0) {
+    return "+0";
+  }
+  return `+${Number.isInteger(value) ? value : value.toFixed(8).replace(/\.?0+$/, "")}`;
 }
 
 function statusLabel(status: AccountRunResult["checkin"]["status"]): string {

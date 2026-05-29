@@ -26,9 +26,11 @@ export type AccountRunResult = {
     status: CheckinStatus;
     message: string;
     httpStatus?: number;
+    earnedPoints?: number;
   };
   accountStatus?: {
     leftDays?: string;
+    points?: string;
     message?: string;
   };
 };

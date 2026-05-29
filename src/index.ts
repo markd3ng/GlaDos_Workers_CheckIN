@@ -277,6 +277,7 @@ button[disabled]{cursor:wait;opacity:.66}
 .account-cell{width:260px;word-break:break-word}
 .status-cell{width:96px;white-space:nowrap}
 .http-cell,.days-cell{width:76px;white-space:nowrap}
+.points-cell,.earned-cell{width:92px;white-space:nowrap}
 .message-cell{min-width:320px;line-height:1.45}
 .channel-cell{width:160px}
 .notify-status-cell{width:120px;white-space:nowrap}
@@ -292,7 +293,7 @@ th,td{border-bottom:1px solid #d8deea;padding:11px 12px;text-align:left;vertical
 tr:last-child td{border-bottom:0}
 th{background:#eef2f8}
 code{background:#edf1f7;padding:2px 5px;border-radius:4px}
-@media (max-width:900px){.workspace{grid-template-columns:1fr}main{padding:18px 12px 32px}table{font-size:14px}.metric-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.mini-table{table-layout:auto}.account-cell,.status-cell,.http-cell,.days-cell,.message-cell,.channel-cell,.notify-status-cell{width:auto;min-width:0;white-space:normal}}
+@media (max-width:900px){.workspace{grid-template-columns:1fr}main{padding:18px 12px 32px}table{font-size:14px}.metric-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.mini-table{table-layout:auto}.account-cell,.status-cell,.http-cell,.days-cell,.points-cell,.earned-cell,.message-cell,.channel-cell,.notify-status-cell{width:auto;min-width:0;white-space:normal}}
 </style>
 </head>
 <body>
@@ -405,6 +406,14 @@ function statusClass(status) {
   return 'status-pill';
 }
 
+function formatSignedPoints(value) {
+  const numeric = Number(value || 0);
+  if (!Number.isFinite(numeric) || numeric <= 0) {
+    return '+0';
+  }
+  return '+' + (Number.isInteger(numeric) ? String(numeric) : numeric.toFixed(8).replace(/\\.?0+$/, ''));
+}
+
 function buildTable(headers, rows, classes) {
   const table = createEl('table', 'mini-table');
   const thead = document.createElement('thead');
@@ -452,15 +461,17 @@ function renderRunReport(report) {
   view.appendChild(createEl('div', 'section-title', '账号结果'));
   view.appendChild(
     buildTable(
-      ['账号', '签到状态', 'HTTP', '剩余天数', '消息'],
+      ['账号', '签到状态', 'HTTP', '剩余天数', '账号 Points', '签到收益', '消息'],
       report.results.map((item) => [
         item.accountName,
         createEl('span', statusClass(item.checkin?.status), statusLabel(item.checkin?.status)),
         item.checkin?.httpStatus,
         item.accountStatus?.leftDays,
+        item.accountStatus?.points,
+        formatSignedPoints(item.checkin?.earnedPoints),
         item.checkin?.message
       ]),
-      ['account-cell', 'status-cell', 'http-cell', 'days-cell', 'message-cell']
+      ['account-cell', 'status-cell', 'http-cell', 'days-cell', 'points-cell', 'earned-cell', 'message-cell']
     )
   );
 
