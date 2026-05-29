@@ -34,33 +34,26 @@ Update: D1 is now in scope because `/log` requires persistent check-in history.
 
 ## Recommended Approach
 
-Create a fresh TypeScript Wrangler project in the workspace. The current root is not a git repository, while `GlaDos_Workers_CheckIN` is a nested git checkout containing the old Worker sample. The new project should live in a new directory so the old reference code stays intact during migration.
-
-Recommended directory:
-
-```text
-glados-workers/
-```
+Create a fresh TypeScript Wrangler project at the repository root. The previous unrelated Worker examples should be removed after the new implementation is in place.
 
 Recommended structure:
 
 ```text
-glados-workers/
-  package.json
-  tsconfig.json
-  wrangler.jsonc
-  README.md
-  src/
+package.json
+tsconfig.json
+wrangler.jsonc
+README.md
+src/
+  index.ts
+  config.ts
+  glados.ts
+  format.ts
+  storage.ts
+  types.ts
+  notify/
     index.ts
-    config.ts
-    glados.ts
-    format.ts
-    types.ts
-    notify/
-      index.ts
-      dingtalk.ts
-      telegram.ts
-      feishu.ts
+test/
+migrations/
 ```
 
 ## Runtime Model
@@ -363,7 +356,7 @@ Before considering implementation complete:
 
 The following defaults are proposed and can be changed before implementation:
 
-- New project directory: `glados-workers/`
+- Project directory: repository root.
 - Cron schedule: daily at `0 0 * * *` UTC, equivalent to 08:00 Asia/Shanghai.
 - Manual endpoint protection: optional `ADMIN_TOKEN`; open if unset.
 - Telegram message format: plain text first to avoid parse-mode escaping bugs.
@@ -374,7 +367,7 @@ The following defaults are proposed and can be changed before implementation:
 
 ## Acceptance Criteria
 
-- A new TypeScript Wrangler project exists under `glados-workers/`.
+- A new TypeScript Wrangler project exists at the repository root.
 - The project can run scheduled check-in and manual HTTP-triggered check-in.
 - Multiple GLaDOS accounts are supported from `GLADOS_ACCOUNTS`.
 - Check-in and account-status lookup results are classified consistently.
@@ -383,5 +376,5 @@ The following defaults are proposed and can be changed before implementation:
 - Cookies and webhook secrets are never committed in source/config.
 - The implementation avoids global mutable request state.
 - The README is sufficient for deployment by copying commands and environment examples.
-- GitHub Actions workflow deploys from the repository root while using `glados-workers/` as the working directory.
+- GitHub Actions workflow deploys from the repository root.
 - `/log` supports cumulative successful check-in history and total points by all time, year, or month.

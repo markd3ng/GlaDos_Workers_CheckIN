@@ -5,7 +5,18 @@ on:
     branches:
       - main
     paths:
-      - "glados-workers/**"
+      - "src/**"
+      - "test/**"
+      - "migrations/**"
+      - "docs/**"
+      - "package.json"
+      - "package-lock.json"
+      - "tsconfig.json"
+      - "vitest.config.ts"
+      - "wrangler.jsonc"
+      - "worker-configuration.d.ts"
+      - "README.md"
+      - ".dev.vars.example"
       - ".github/workflows/glados-workers-deploy.yml"
   workflow_dispatch:
 
@@ -13,9 +24,6 @@ jobs:
   deploy:
     name: Test and deploy
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: glados-workers
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -25,7 +33,7 @@ jobs:
         with:
           node-version: "22"
           cache: npm
-          cache-dependency-path: glados-workers/package-lock.json
+          cache-dependency-path: package-lock.json
 
       - name: Install dependencies
         run: npm ci
