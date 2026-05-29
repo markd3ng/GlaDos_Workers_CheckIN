@@ -146,7 +146,8 @@ Token 的 Account Resources 限制到当前账号即可，不需要 All accounts
 
 ```text
 GLADOS_ACCOUNTS       必填，JSON 字符串数组，保存账号名称和 Cookie
-ADMIN_TOKEN           可选，启用手动端点时用于鉴权
+ADMIN_USER            可选，页面和手动端点的 Basic Auth 用户名，默认 admin
+ADMIN_TOKEN           必填，页面和手动端点的 Basic Auth 密码
 DINGTALK_WEBHOOK      可选，钉钉机器人 Webhook
 DINGTALK_SECRET       可选，钉钉机器人加签密钥
 TELEGRAM_BOT_TOKEN    可选，Telegram Bot Token
@@ -288,6 +289,7 @@ GitHub Workflow 会在部署前自动执行 `db:prepare` 和 `db:migrate:remote`
 
 ```bash
 npx wrangler secret put GLADOS_ACCOUNTS
+npx wrangler secret put ADMIN_USER
 npx wrangler secret put ADMIN_TOKEN
 npx wrangler secret put DINGTALK_WEBHOOK
 npx wrangler secret put DINGTALK_SECRET
@@ -304,7 +306,6 @@ npx wrangler secret put FEISHU_SECRET
   "vars": {
     "CHECKIN_CONCURRENCY": "2",
     "CHECKIN_RETRIES": "3",
-    "ENABLE_MANUAL_ENDPOINTS": "false",
     "NOTIFY_ON_STATUS_ONLY": "false"
   }
 }
@@ -347,7 +348,7 @@ npm run deploy
 
 ## HTTP 端点
 
-这个项目的核心是 Cron 自动签到，所以手动端点默认关闭。
+这个项目的核心是 Cron 自动签到；页面和手动端点使用 Basic Auth 保护。
 
 保留端点的意义：
 
@@ -358,20 +359,16 @@ npm run deploy
 - `/run`：手动执行一次完整流程并发送通知。
 - `/log`：查看 D1 中累计成功签到记录、获得 Point、剩余天数等信息。
 
-如果你只需要每日自动签到，可以保持默认：
+认证配置：
 
 ```text
-ENABLE_MANUAL_ENDPOINTS=false
-```
-
-此时 `/status`、`/test`、`/checkin`、`/run`、`/log` 会返回 `404`，减少公开攻击面。`/health` 仍保留。
-
-如需启用手动端点，必须同时配置：
-
-```text
-ENABLE_MANUAL_ENDPOINTS=true
+ADMIN_USER=admin
 ADMIN_TOKEN=YOUR_ADMIN_TOKEN
 ```
+
+浏览器打开 `/` 或 `/log` 时会弹出用户名/密码输入框。用户名填 `ADMIN_USER`，密码填 `ADMIN_TOKEN`。
+
+如果没有配置 `ADMIN_TOKEN`，`/status`、`/test`、`/checkin`、`/run`、`/log` 会返回 `404`。`/health` 仍保留公开访问。
 
 ### 健康检查
 
@@ -382,13 +379,13 @@ curl https://YOUR_WORKER_DOMAIN/health
 ### 查询状态
 
 ```bash
-curl -H "Authorization: Bearer YOUR_ADMIN_TOKEN" https://YOUR_WORKER_DOMAIN/status
+curl -u "admin:YOUR_ADMIN_TOKEN" https://YOUR_WORKER_DOMAIN/status
 ```
 
 ### 一次性测试签到、Cookie 和通知
 
 ```bash
-curl -X POST -H "Authorization: Bearer YOUR_ADMIN_TOKEN" https://YOUR_WORKER_DOMAIN/test
+curl -X POST -u "admin:YOUR_ADMIN_TOKEN" https://YOUR_WORKER_DOMAIN/test
 ```
 
 `/test` 会执行一次真实签到请求，并返回：
@@ -404,48 +401,42 @@ curl -X POST -H "Authorization: Bearer YOUR_ADMIN_TOKEN" https://YOUR_WORKER_DOM
 `/checkin` 只触发签到，默认不发送通知：
 
 ```bash
-curl -X POST -H "Authorization: Bearer YOUR_ADMIN_TOKEN" https://YOUR_WORKER_DOMAIN/checkin
+curl -X POST -u "admin:YOUR_ADMIN_TOKEN" https://YOUR_WORKER_DOMAIN/checkin
 ```
 
 ### 手动签到并发送通知
 
 ```bash
-curl -X POST -H "Authorization: Bearer YOUR_ADMIN_TOKEN" https://YOUR_WORKER_DOMAIN/run
+curl -X POST -u "admin:YOUR_ADMIN_TOKEN" https://YOUR_WORKER_DOMAIN/run
 ```
 
 ### 查看签到日志
 
 ```bash
-curl -H "Authorization: Bearer YOUR_ADMIN_TOKEN" https://YOUR_WORKER_DOMAIN/log
+curl -u "admin:YOUR_ADMIN_TOKEN" https://YOUR_WORKER_DOMAIN/log
 ```
 
 按年份筛选：
 
 ```bash
-curl -H "Authorization: Bearer YOUR_ADMIN_TOKEN" "https://YOUR_WORKER_DOMAIN/log?year=2026"
+curl -u "admin:YOUR_ADMIN_TOKEN" "https://YOUR_WORKER_DOMAIN/log?year=2026"
 ```
 
 按月份筛选：
 
 ```bash
-curl -H "Authorization: Bearer YOUR_ADMIN_TOKEN" "https://YOUR_WORKER_DOMAIN/log?year=2026&month=05"
+curl -u "admin:YOUR_ADMIN_TOKEN" "https://YOUR_WORKER_DOMAIN/log?year=2026&month=05"
 ```
 
 `/log` 返回 HTML 表格，包含日期时间、账号、状态、Point、剩余天数、触发方式、消息，并显示当前筛选范围内的累计 Point。
 
-### 带 ADMIN_TOKEN
+### API Bearer Token
 
-受保护端点需要 Bearer token：
+如果不方便使用 Basic Auth，也可以继续用 Bearer token。Bearer token 只校验 `ADMIN_TOKEN`，不校验 `ADMIN_USER`：
 
 ```bash
 curl -H "Authorization: Bearer YOUR_ADMIN_TOKEN" https://YOUR_WORKER_DOMAIN/status
 curl -X POST -H "Authorization: Bearer YOUR_ADMIN_TOKEN" https://YOUR_WORKER_DOMAIN/run
-```
-
-也可以用查询参数：
-
-```bash
-curl "https://YOUR_WORKER_DOMAIN/status?token=YOUR_ADMIN_TOKEN"
 ```
 
 ## 通知配置
@@ -523,5 +514,5 @@ npm run cf:types
 
 - 不要提交真实 Cookie、Webhook、Token。
 - 不要把 Cookie 写进 `wrangler.jsonc`。
-- 推荐设置 `ADMIN_TOKEN` 保护 `/status`、`/test`、`/checkin`、`/run`、`/log`。
+- 必须设置 `ADMIN_TOKEN` 保护 `/`、`/status`、`/test`、`/checkin`、`/run`、`/log`；`ADMIN_USER` 默认是 `admin`。
 - 日志只记录账号名称和状态，不记录 Cookie。

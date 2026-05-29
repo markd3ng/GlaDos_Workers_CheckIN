@@ -18,10 +18,10 @@ export function parseConfig(env: EnvLike): AppConfig {
 
   return {
     accounts,
+    adminUser: nonEmpty(getString(env, "ADMIN_USER")) ?? "admin",
     adminToken: nonEmpty(getString(env, "ADMIN_TOKEN")),
     checkinConcurrency: parsePositiveInteger(getString(env, "CHECKIN_CONCURRENCY"), 2),
     checkinRetries: parsePositiveInteger(getString(env, "CHECKIN_RETRIES"), 3),
-    manualEndpointsEnabled: getString(env, "ENABLE_MANUAL_ENDPOINTS")?.toLowerCase() === "true",
     notifyOnStatusOnly: getString(env, "NOTIFY_ON_STATUS_ONLY")?.toLowerCase() === "true",
     notifications: parseNotifications(env)
   };

@@ -16,9 +16,11 @@ const env = {
   GLADOS_ACCOUNTS: JSON.stringify([{ name: "main", cookie: "cookie=value" }]),
   CHECKIN_CONCURRENCY: "1",
   CHECKIN_RETRIES: "1",
-  ENABLE_MANUAL_ENDPOINTS: "true",
+  ADMIN_USER: "admin",
   ADMIN_TOKEN: "secret"
 };
+
+const basicAuth = `Basic ${btoa("admin:secret")}`;
 
 describe("worker routes", () => {
   it("returns health JSON", async () => {
@@ -29,40 +31,39 @@ describe("worker routes", () => {
   });
 
   it("renders an index page with log and test endpoints", async () => {
-    const response = await worker.fetch(new Request("https://worker.test/"), env);
+    const response = await worker.fetch(new Request("https://worker.test/", { headers: { Authorization: basicAuth } }), env);
     const html = await response.text();
 
     expect(response.status).toBe(200);
     expect(response.headers.get("Content-Type")).toContain("text/html");
     expect(html).toContain("/log");
     expect(html).toContain("/test");
+    expect(html).toContain("<form");
     expect(html).not.toContain("/trigger-checkin");
     expect(html).toContain("/status");
   });
 
-  it("requires admin token when configured", async () => {
+  it("requires Basic Auth when admin token is configured", async () => {
     const denied = await worker.fetch(new Request("https://worker.test/status"), env);
-    const allowed = await worker.fetch(new Request("https://worker.test/status?token=secret"), env);
+    const allowed = await worker.fetch(new Request("https://worker.test/status", { headers: { Authorization: basicAuth } }), env);
 
     expect(denied.status).toBe(401);
+    expect(denied.headers.get("WWW-Authenticate")).toContain("Basic");
     expect(allowed.status).not.toBe(401);
   });
 
-  it("keeps manual endpoints disabled by default", async () => {
-    const response = await worker.fetch(
-      new Request("https://worker.test/status"),
-      {
-        CHECKIN_CONCURRENCY: "1",
-        CHECKIN_RETRIES: "1"
-      }
-    );
+  it("disables manual endpoints when admin token is missing", async () => {
+    const response = await worker.fetch(new Request("https://worker.test/status"), {
+      CHECKIN_CONCURRENCY: "1",
+      CHECKIN_RETRIES: "1"
+    });
 
     expect(response.status).toBe(404);
-    await expect(response.json()).resolves.toMatchObject({ ok: false, error: "Manual endpoints disabled" });
+    await expect(response.json()).resolves.toMatchObject({ ok: false, error: "ADMIN_TOKEN is required" });
   });
 
   it("renders the D1 checkin log table when enabled and authorized", async () => {
-    const response = await worker.fetch(new Request("https://worker.test/log?token=secret&year=2026&month=05"), {
+    const response = await worker.fetch(new Request("https://worker.test/log?year=2026&month=05", { headers: { Authorization: basicAuth } }), {
       ...env,
       CHECKIN_DB: createMockDb([
         {
@@ -86,7 +87,7 @@ describe("worker routes", () => {
   it("queries status without calling the checkin endpoint", async () => {
     const fetcher = vi.spyOn(globalThis, "fetch").mockResolvedValueOnce(jsonResponse({ data: { leftDays: "30" } }));
 
-    const response = await worker.fetch(new Request("https://worker.test/status?token=secret"), env);
+    const response = await worker.fetch(new Request("https://worker.test/status", { headers: { Authorization: basicAuth } }), env);
     const body = (await response.json()) as JsonBody;
 
     expect(response.status).toBe(200);
@@ -108,9 +109,12 @@ describe("worker routes", () => {
       .mockResolvedValueOnce(jsonResponse({ data: { leftDays: "10" } }))
       .mockResolvedValueOnce(jsonResponse({ ok: true }));
 
-    const checkin = await worker.fetch(new Request("https://worker.test/checkin?token=secret", { method: "POST" }), env);
+    const checkin = await worker.fetch(
+      new Request("https://worker.test/checkin", { method: "POST", headers: { Authorization: basicAuth } }),
+      env
+    );
     const test = await worker.fetch(
-      new Request("https://worker.test/test?token=secret", { method: "POST" }),
+      new Request("https://worker.test/test", { method: "POST", headers: { Authorization: basicAuth } }),
       {
         ...env,
         TELEGRAM_BOT_TOKEN: "token",
@@ -119,7 +123,7 @@ describe("worker routes", () => {
       }
     );
     const run = await worker.fetch(
-      new Request("https://worker.test/run?token=secret", { method: "POST" }),
+      new Request("https://worker.test/run", { method: "POST", headers: { Authorization: basicAuth } }),
       { ...env, FEISHU_WEBHOOK: "https://example.invalid/feishu" }
     );
 

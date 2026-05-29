@@ -72,10 +72,10 @@ export type NotificationSummary = {
 
 export type AppConfig = {
   accounts: AccountConfig[];
+  adminUser: string;
   adminToken?: string;
   checkinConcurrency: number;
   checkinRetries: number;
-  manualEndpointsEnabled: boolean;
   notifyOnStatusOnly: boolean;
   notifications: NotificationChannel[];
 };

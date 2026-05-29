@@ -1,12 +1,12 @@
 GLADOS_ACCOUNTS=[{"name":"account-1","cookie":"koa:sess=YOUR_SESSION;koa:sess.sig=YOUR_SIGNATURE"}]
 
 # Optional manual endpoint protection
+ADMIN_USER=admin
 ADMIN_TOKEN=replace-with-a-long-random-token
 
 # Optional runtime tuning
 CHECKIN_CONCURRENCY=2
 CHECKIN_RETRIES=3
-ENABLE_MANUAL_ENDPOINTS=false
 NOTIFY_ON_STATUS_ONLY=false
 
 # Optional DingTalk notification

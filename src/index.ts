@@ -33,24 +33,25 @@ export default worker;
 async function handleRequest(request: Request, env: EnvLike): Promise<Response> {
   const url = new URL(request.url);
 
-  if (request.method === "GET" && url.pathname === "/") {
-    return html(renderIndexPage());
-  }
-
   if (request.method === "GET" && url.pathname === "/health") {
     return json({ ok: true, service: "glados-workers" });
+  }
+
+  if (request.method === "GET" && url.pathname === "/") {
+    const auth = await requireAdmin(request, env);
+    if (auth) {
+      return auth;
+    }
+    return html(renderIndexPage());
   }
 
   if (!["/status", "/checkin", "/test", "/run", "/log"].includes(url.pathname)) {
     return json({ ok: false, error: "Not found" }, 404);
   }
 
-  if (getEnvString(env, "ENABLE_MANUAL_ENDPOINTS")?.toLowerCase() !== "true") {
-    return json({ ok: false, error: "Manual endpoints disabled" }, 404);
-  }
-
-  if (!(await isAuthorized(request, env))) {
-    return json({ ok: false, error: "Unauthorized" }, 401);
+  const auth = await requireAdmin(request, env);
+  if (auth) {
+    return auth;
   }
 
   if (url.pathname === "/log" && request.method === "GET") {
@@ -155,15 +156,55 @@ async function statusOnlyFetcher(input: RequestInfo | URL, init?: RequestInit): 
   return fetch(input, init);
 }
 
-async function isAuthorized(request: Request, env: EnvLike): Promise<boolean> {
-  const expected = getEnvString(env, "ADMIN_TOKEN")?.trim();
-  if (!expected) {
-    return true;
+async function requireAdmin(request: Request, env: EnvLike): Promise<Response | undefined> {
+  const expectedUser = getEnvString(env, "ADMIN_USER")?.trim() || "admin";
+  const expectedToken = getEnvString(env, "ADMIN_TOKEN")?.trim();
+  if (!expectedToken) {
+    return json({ ok: false, error: "ADMIN_TOKEN is required" }, 404);
   }
-  const url = new URL(request.url);
+
   const authorization = request.headers.get("Authorization");
-  const provided = authorization?.startsWith("Bearer ") ? authorization.slice("Bearer ".length) : url.searchParams.get("token");
-  return timingSafeEqual(provided ?? "", expected);
+  if (authorization?.startsWith("Basic ")) {
+    const credentials = parseBasicCredentials(authorization);
+    if (
+      credentials &&
+      (await timingSafeEqual(credentials.username, expectedUser)) &&
+      (await timingSafeEqual(credentials.password, expectedToken))
+    ) {
+      return undefined;
+    }
+  }
+
+  if (authorization?.startsWith("Bearer ")) {
+    const provided = authorization.slice("Bearer ".length);
+    if (await timingSafeEqual(provided, expectedToken)) {
+      return undefined;
+    }
+  }
+
+  return new Response("Unauthorized", {
+    status: 401,
+    headers: {
+      "WWW-Authenticate": 'Basic realm="GLaDOS Workers Check-In", charset="UTF-8"',
+      "Content-Type": "text/plain;charset=UTF-8"
+    }
+  });
+}
+
+function parseBasicCredentials(authorization: string): { username: string; password: string } | undefined {
+  try {
+    const decoded = atob(authorization.slice("Basic ".length));
+    const separator = decoded.indexOf(":");
+    if (separator < 0) {
+      return undefined;
+    }
+    return {
+      username: decoded.slice(0, separator),
+      password: decoded.slice(separator + 1)
+    };
+  } catch {
+    return undefined;
+  }
 }
 
 function getEnvString(env: EnvLike, key: string): string | undefined {
@@ -216,16 +257,24 @@ code{background:#edf1f7;padding:2px 5px;border-radius:4px}
 <body>
 <main>
 <h1>GLaDOS Workers Check-In</h1>
-<p>定时签到由 Cloudflare Cron 自动执行。手动端点默认关闭；启用后需要 <code>ENABLE_MANUAL_ENDPOINTS=true</code> 和 <code>ADMIN_TOKEN</code>。</p>
+<p>定时签到由 Cloudflare Cron 自动执行。页面和手动端点使用 Basic Auth 保护；用户名来自 <code>ADMIN_USER</code>，密码来自 <code>ADMIN_TOKEN</code>。</p>
+<section>
+<h2>操作</h2>
+<form method="get" action="/status"><button type="submit">查询状态</button></form>
+<form method="post" action="/test"><button type="submit">测试签到、Cookie 和通知</button></form>
+<form method="post" action="/checkin"><button type="submit">手动签到，不通知</button></form>
+<form method="post" action="/run"><button type="submit">手动签到并通知</button></form>
+<form method="get" action="/log"><button type="submit">查看日志</button></form>
+</section>
 <table>
 <thead><tr><th>端点</th><th>作用</th><th>调用方式</th></tr></thead>
 <tbody>
 <tr><td><a href="/health">/health</a></td><td>健康检查。</td><td><code>GET /health</code></td></tr>
-<tr><td>/status</td><td>只查询账号状态，用来检查 Cookie 当前是否有效和剩余天数。</td><td><code>GET /status?token=YOUR_ADMIN_TOKEN</code></td></tr>
-<tr><td>/test</td><td>一次性测试签到、Cookie 有效性、通知渠道数量和推送效果。</td><td><code>POST /test?token=YOUR_ADMIN_TOKEN</code></td></tr>
-<tr><td>/checkin</td><td>手动触发一次签到，不发送通知，除非加 <code>?notify=true</code>。</td><td><code>POST /checkin?token=YOUR_ADMIN_TOKEN</code></td></tr>
-<tr><td>/run</td><td>手动执行完整签到并发送已启用的通知。</td><td><code>POST /run?token=YOUR_ADMIN_TOKEN</code></td></tr>
-<tr><td><a href="/log">/log</a></td><td>查看 D1 签到日志。支持 <code>year</code> 和 <code>month</code> 筛选。</td><td><code>GET /log?token=YOUR_ADMIN_TOKEN&amp;year=2026&amp;month=05</code></td></tr>
+<tr><td>/status</td><td>只查询账号状态，用来检查 Cookie 当前是否有效和剩余天数。</td><td><code>GET /status</code></td></tr>
+<tr><td>/test</td><td>一次性测试签到、Cookie 有效性、通知渠道数量和推送效果。</td><td><code>POST /test</code></td></tr>
+<tr><td>/checkin</td><td>手动触发一次签到，不发送通知，除非加 <code>?notify=true</code>。</td><td><code>POST /checkin</code></td></tr>
+<tr><td>/run</td><td>手动执行完整签到并发送已启用的通知。</td><td><code>POST /run</code></td></tr>
+<tr><td><a href="/log">/log</a></td><td>查看 D1 签到日志。支持 <code>year</code> 和 <code>month</code> 筛选。</td><td><code>GET /log?year=2026&amp;month=05</code></td></tr>
 </tbody>
 </table>
 </main>

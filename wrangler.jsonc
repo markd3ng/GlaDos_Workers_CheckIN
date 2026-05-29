@@ -20,7 +20,6 @@
   "vars": {
     "CHECKIN_CONCURRENCY": "2",
     "CHECKIN_RETRIES": "3",
-    "ENABLE_MANUAL_ENDPOINTS": "false",
     "NOTIFY_ON_STATUS_ONLY": "false"
   }
 }

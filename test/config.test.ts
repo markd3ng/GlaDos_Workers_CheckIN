@@ -11,7 +11,7 @@ describe("parseConfig", () => {
     expect(config.checkinConcurrency).toBe(2);
     expect(config.checkinRetries).toBe(3);
     expect(config.notifyOnStatusOnly).toBe(false);
-    expect(config.manualEndpointsEnabled).toBe(false);
+    expect(config.adminUser).toBe("admin");
   });
 
   it("rejects missing, malformed, empty, and password-style account configuration", () => {
@@ -28,7 +28,7 @@ describe("parseConfig", () => {
       GLADOS_ACCOUNTS: JSON.stringify([{ name: "main", cookie: "cookie=value" }]),
       CHECKIN_CONCURRENCY: "5",
       CHECKIN_RETRIES: "4",
-      ENABLE_MANUAL_ENDPOINTS: "true",
+      ADMIN_USER: "owner",
       NOTIFY_ON_STATUS_ONLY: "true",
       DINGTALK_WEBHOOK: "https://example.invalid/dingtalk",
       TELEGRAM_BOT_TOKEN: "telegram-token",
@@ -38,7 +38,7 @@ describe("parseConfig", () => {
 
     expect(config.checkinConcurrency).toBe(5);
     expect(config.checkinRetries).toBe(4);
-    expect(config.manualEndpointsEnabled).toBe(true);
+    expect(config.adminUser).toBe("owner");
     expect(config.notifyOnStatusOnly).toBe(true);
     expect(config.notifications.map((channel) => channel.channel)).toEqual(["dingtalk", "telegram", "feishu"]);
   });
