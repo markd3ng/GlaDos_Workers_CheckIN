@@ -8,7 +8,8 @@
     "test:watch": "vitest",
     "type-check": "tsc --noEmit",
     "cf:types": "wrangler types",
-    "db:migrate:remote": "wrangler d1 migrations apply glados-checkin --remote",
+    "db:prepare": "node scripts/prepare-d1.mjs",
+    "db:migrate:remote": "node scripts/migrate-d1.mjs",
     "dev": "wrangler dev --local --host 127.0.0.1 --port 8787",
     "deploy": "wrangler deploy"
   },

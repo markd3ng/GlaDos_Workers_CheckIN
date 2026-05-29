@@ -65,6 +65,22 @@ CLOUDFLARE_API_TOKEN
 CLOUDFLARE_ACCOUNT_ID
 ```
 
+可选：
+
+```text
+CLOUDFLARE_D1_DATABASE_ID
+```
+
+如果你已经手动创建了 D1，可以把真实 database id 放到 GitHub Secrets。没有提供时，Workflow 会按数据库名称自动查找；查不到会自动创建。
+
+可选 GitHub Actions Variable：
+
+```text
+CLOUDFLARE_D1_DATABASE_NAME
+```
+
+不填时使用 `wrangler.jsonc` 中的默认名称 `glados-checkin`。
+
 `CLOUDFLARE_API_TOKEN` 建议使用权限最小化的 Cloudflare API Token，至少需要能部署目标 Worker。
 
 最小权限建议：
@@ -160,15 +176,23 @@ http://127.0.0.1:8787
 
 ## Cloudflare 配置
 
-### 创建 D1 数据库
+### D1 数据库
 
-签到日志使用 Cloudflare D1 保存。先创建数据库：
+签到日志使用 Cloudflare D1 保存。
+
+推荐让 GitHub Workflow 自动准备 D1：
+
+1. 如果设置了 `CLOUDFLARE_D1_DATABASE_ID`，Workflow 会直接使用这个数据库。
+2. 如果没有设置 ID，Workflow 会按 `CLOUDFLARE_D1_DATABASE_NAME` 或 `wrangler.jsonc` 中的 `database_name` 查找。
+3. 如果仍然找不到，Workflow 会自动创建 D1，并把真实 `database_id` 写入本次 CI 工作区的 `wrangler.jsonc`，然后再执行 migration 和 deploy。
+
+也可以手动创建数据库：
 
 ```bash
 npx wrangler d1 create glados-checkin
 ```
 
-命令会输出 `database_id`。把它填入 `wrangler.jsonc`：
+命令会输出 `database_id`。你可以把它填入 GitHub Secret `CLOUDFLARE_D1_DATABASE_ID`，也可以手动填入 `wrangler.jsonc`：
 
 ```jsonc
 {
@@ -185,10 +209,11 @@ npx wrangler d1 create glados-checkin
 本地或首次部署前可手动应用 migration：
 
 ```bash
+npm run db:prepare
 npm run db:migrate:remote
 ```
 
-GitHub Workflow 也会在部署前自动执行这个 migration 命令。
+GitHub Workflow 会在部署前自动执行 `db:prepare` 和 `db:migrate:remote`。
 
 推荐把敏感信息设置为 Secrets：
 
