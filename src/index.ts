@@ -41,7 +41,7 @@ async function handleRequest(request: Request, env: EnvLike): Promise<Response> 
     return json({ ok: true, service: "glados-workers" });
   }
 
-  if (!["/status", "/checkin", "/trigger-checkin", "/run", "/log"].includes(url.pathname)) {
+  if (!["/status", "/checkin", "/test", "/run", "/log"].includes(url.pathname)) {
     return json({ ok: false, error: "Not found" }, 404);
   }
 
@@ -68,9 +68,13 @@ async function handleRequest(request: Request, env: EnvLike): Promise<Response> 
     return json(await executeRun(env, "manual", getEnvString(env, "NOTIFY_ON_STATUS_ONLY")?.toLowerCase() === "true", true));
   }
 
-  if ((url.pathname === "/checkin" || url.pathname === "/trigger-checkin") && request.method === "POST") {
+  if (url.pathname === "/checkin" && request.method === "POST") {
     const shouldNotify = url.searchParams.get("notify") === "true";
     return json(await executeRun(env, "manual", shouldNotify));
+  }
+
+  if (url.pathname === "/test" && request.method === "POST") {
+    return json(await executeRun(env, "manual", true));
   }
 
   if (url.pathname === "/run" && request.method === "POST") {
@@ -105,13 +109,20 @@ async function executeRun(
     startedAt: new Date().toISOString(),
     summary: summarizeResults(results),
     results,
-    notifications: []
+    notifications: [],
+    notificationSummary: {
+      configured: config.notifications.length,
+      attempted: 0,
+      succeeded: 0,
+      failed: 0
+    }
   };
 
   await recordSuccessfulCheckins(env.CHECKIN_DB, results, trigger, report.startedAt);
 
   if (notify) {
     report.notifications = await sendEnabledNotifications(report, { channels: config.notifications });
+    report.notificationSummary = summarizeNotifications(config.notifications.length, report.notifications);
   }
 
   console.log(
@@ -124,6 +135,15 @@ async function executeRun(
   );
 
   return report;
+}
+
+function summarizeNotifications(configured: number, notifications: RunReport["notifications"]): RunReport["notificationSummary"] {
+  return {
+    configured,
+    attempted: notifications.length,
+    succeeded: notifications.filter((notification) => notification.ok).length,
+    failed: notifications.filter((notification) => !notification.ok).length
+  };
 }
 
 async function statusOnlyFetcher(input: RequestInfo | URL, init?: RequestInit): Promise<Response> {
@@ -202,8 +222,8 @@ code{background:#edf1f7;padding:2px 5px;border-radius:4px}
 <tbody>
 <tr><td><a href="/health">/health</a></td><td>健康检查。</td><td><code>GET /health</code></td></tr>
 <tr><td>/status</td><td>只查询账号状态，用来检查 Cookie 当前是否有效和剩余天数。</td><td><code>GET /status?token=YOUR_ADMIN_TOKEN</code></td></tr>
-<tr><td>/trigger-checkin</td><td>手动触发一次签到，不发送通知。适合验证 Cookie 是否能完成真实签到请求。</td><td><code>POST /trigger-checkin?token=YOUR_ADMIN_TOKEN</code></td></tr>
-<tr><td>/checkin</td><td><code>/trigger-checkin</code> 的兼容别名，不发送通知，除非加 <code>?notify=true</code>。</td><td><code>POST /checkin?token=YOUR_ADMIN_TOKEN</code></td></tr>
+<tr><td>/test</td><td>一次性测试签到、Cookie 有效性、通知渠道数量和推送效果。</td><td><code>POST /test?token=YOUR_ADMIN_TOKEN</code></td></tr>
+<tr><td>/checkin</td><td>手动触发一次签到，不发送通知，除非加 <code>?notify=true</code>。</td><td><code>POST /checkin?token=YOUR_ADMIN_TOKEN</code></td></tr>
 <tr><td>/run</td><td>手动执行完整签到并发送已启用的通知。</td><td><code>POST /run?token=YOUR_ADMIN_TOKEN</code></td></tr>
 <tr><td><a href="/log">/log</a></td><td>查看 D1 签到日志。支持 <code>year</code> 和 <code>month</code> 筛选。</td><td><code>GET /log?token=YOUR_ADMIN_TOKEN&amp;year=2026&amp;month=05</code></td></tr>
 </tbody>

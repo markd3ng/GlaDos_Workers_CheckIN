@@ -3,6 +3,12 @@ import worker from "../src/index";
 
 type JsonBody = {
   notifications?: unknown;
+  notificationSummary?: {
+    configured: number;
+    attempted: number;
+    succeeded: number;
+    failed: number;
+  };
   results?: Array<{ accountStatus?: { leftDays?: string } }>;
 };
 
@@ -22,14 +28,15 @@ describe("worker routes", () => {
     await expect(response.json()).resolves.toMatchObject({ ok: true, service: "glados-workers" });
   });
 
-  it("renders an index page with log and manual trigger endpoints", async () => {
+  it("renders an index page with log and test endpoints", async () => {
     const response = await worker.fetch(new Request("https://worker.test/"), env);
     const html = await response.text();
 
     expect(response.status).toBe(200);
     expect(response.headers.get("Content-Type")).toContain("text/html");
     expect(html).toContain("/log");
-    expect(html).toContain("/trigger-checkin");
+    expect(html).toContain("/test");
+    expect(html).not.toContain("/trigger-checkin");
     expect(html).toContain("/status");
   });
 
@@ -88,21 +95,28 @@ describe("worker routes", () => {
     expect(String(fetcher.mock.calls[0]?.[0])).toBe("https://glados.rocks/api/user/status");
   });
 
-  it("runs checkin without notification on /checkin and /trigger-checkin, and with notification on /run", async () => {
+  it("runs checkin without notification on /checkin, tests configured notifications on /test, and notifies on /run", async () => {
     const fetcher = vi
       .spyOn(globalThis, "fetch")
       .mockResolvedValueOnce(jsonResponse({ code: 0, message: "Checkin! Got 1 Points" }))
       .mockResolvedValueOnce(jsonResponse({ data: { leftDays: "10" } }))
       .mockResolvedValueOnce(jsonResponse({ code: 0, message: "Checkin! Got 1 Points" }))
       .mockResolvedValueOnce(jsonResponse({ data: { leftDays: "10" } }))
+      .mockResolvedValueOnce(jsonResponse({ ok: true }))
+      .mockResolvedValueOnce(jsonResponse({ ok: false }, 500))
       .mockResolvedValueOnce(jsonResponse({ code: 0, message: "Checkin! Got 1 Points" }))
       .mockResolvedValueOnce(jsonResponse({ data: { leftDays: "10" } }))
       .mockResolvedValueOnce(jsonResponse({ ok: true }));
 
     const checkin = await worker.fetch(new Request("https://worker.test/checkin?token=secret", { method: "POST" }), env);
-    const trigger = await worker.fetch(
-      new Request("https://worker.test/trigger-checkin?token=secret", { method: "POST" }),
-      env
+    const test = await worker.fetch(
+      new Request("https://worker.test/test?token=secret", { method: "POST" }),
+      {
+        ...env,
+        TELEGRAM_BOT_TOKEN: "token",
+        TELEGRAM_CHAT_ID: "chat",
+        FEISHU_WEBHOOK: "https://example.invalid/feishu"
+      }
     );
     const run = await worker.fetch(
       new Request("https://worker.test/run?token=secret", { method: "POST" }),
@@ -111,11 +125,17 @@ describe("worker routes", () => {
 
     expect(checkin.status).toBe(200);
     expect(((await checkin.json()) as JsonBody).notifications).toEqual([]);
-    expect(trigger.status).toBe(200);
-    expect(((await trigger.json()) as JsonBody).notifications).toEqual([]);
+    expect(test.status).toBe(200);
+    const testBody = (await test.json()) as JsonBody;
+    expect(testBody.notifications).toEqual([
+      { channel: "telegram", ok: true },
+      { channel: "feishu", ok: false, error: "HTTP 500" }
+    ]);
+    expect(testBody.notificationSummary).toEqual({ configured: 2, attempted: 2, succeeded: 1, failed: 1 });
+    expect(testBody.results?.[0]?.accountStatus?.leftDays).toBe("10");
     expect(run.status).toBe(200);
     expect(((await run.json()) as JsonBody).notifications).toEqual([{ channel: "feishu", ok: true }]);
-    expect(fetcher).toHaveBeenCalledTimes(7);
+    expect(fetcher).toHaveBeenCalledTimes(9);
   });
 
   it("returns 404 JSON for unknown routes", async () => {

@@ -63,6 +63,13 @@ export type NotificationResult = {
   error?: string;
 };
 
+export type NotificationSummary = {
+  configured: number;
+  attempted: number;
+  succeeded: number;
+  failed: number;
+};
+
 export type AppConfig = {
   accounts: AccountConfig[];
   adminToken?: string;
@@ -80,6 +87,7 @@ export type RunReport = {
   summary: Summary;
   results: AccountRunResult[];
   notifications: NotificationResult[];
+  notificationSummary: NotificationSummary;
 };
 
 export type Fetcher = typeof fetch;

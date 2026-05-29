@@ -15,7 +15,8 @@ const report: RunReport = {
       accountStatus: { leftDays: "12.34" }
     }
   ],
-  notifications: []
+  notifications: [],
+  notificationSummary: { configured: 0, attempted: 0, succeeded: 0, failed: 0 }
 };
 
 describe("notification helpers", () => {

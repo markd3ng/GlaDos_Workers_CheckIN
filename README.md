@@ -353,8 +353,8 @@ npm run deploy
 
 - `/health`：用于部署后检查 Worker 是否正常启动。
 - `/status`：手动查看 Cookie 是否仍有效和剩余天数。
-- `/trigger-checkin`：手动触发一次真实签到请求，不发送通知，适合验证 Cookie 是否有效。
-- `/checkin`：`/trigger-checkin` 的兼容别名。
+- `/test`：一次性测试真实签到、Cookie 是否有效、已配置通知渠道数量，以及各通知渠道推送是否成功。
+- `/checkin`：手动触发一次真实签到请求，默认不发送通知。
 - `/run`：手动执行一次完整流程并发送通知。
 - `/log`：查看 D1 中累计成功签到记录、获得 Point、剩余天数等信息。
 
@@ -364,7 +364,7 @@ npm run deploy
 ENABLE_MANUAL_ENDPOINTS=false
 ```
 
-此时 `/status`、`/trigger-checkin`、`/checkin`、`/run`、`/log` 会返回 `404`，减少公开攻击面。`/health` 仍保留。
+此时 `/status`、`/test`、`/checkin`、`/run`、`/log` 会返回 `404`，减少公开攻击面。`/health` 仍保留。
 
 如需启用手动端点，必须同时配置：
 
@@ -385,13 +385,23 @@ curl https://YOUR_WORKER_DOMAIN/health
 curl -H "Authorization: Bearer YOUR_ADMIN_TOKEN" https://YOUR_WORKER_DOMAIN/status
 ```
 
-### 手动触发签到，不发送通知
+### 一次性测试签到、Cookie 和通知
 
 ```bash
-curl -X POST -H "Authorization: Bearer YOUR_ADMIN_TOKEN" https://YOUR_WORKER_DOMAIN/trigger-checkin
+curl -X POST -H "Authorization: Bearer YOUR_ADMIN_TOKEN" https://YOUR_WORKER_DOMAIN/test
 ```
 
-`/checkin` 仍保留为兼容别名：
+`/test` 会执行一次真实签到请求，并返回：
+
+- 每个账号的签到结果。
+- Cookie 当前状态。
+- 账号剩余天数。
+- 已配置通知渠道数量。
+- 每个通知渠道的推送成功或失败结果。
+
+### 手动签到，不发送通知
+
+`/checkin` 只触发签到，默认不发送通知：
 
 ```bash
 curl -X POST -H "Authorization: Bearer YOUR_ADMIN_TOKEN" https://YOUR_WORKER_DOMAIN/checkin
@@ -513,5 +523,5 @@ npm run cf:types
 
 - 不要提交真实 Cookie、Webhook、Token。
 - 不要把 Cookie 写进 `wrangler.jsonc`。
-- 推荐设置 `ADMIN_TOKEN` 保护 `/status`、`/checkin`、`/run`。
+- 推荐设置 `ADMIN_TOKEN` 保护 `/status`、`/test`、`/checkin`、`/run`、`/log`。
 - 日志只记录账号名称和状态，不记录 Cookie。
