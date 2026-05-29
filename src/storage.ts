@@ -75,13 +75,13 @@ export function buildLogHtml(logs: { rows: CheckinLogRow[]; totalPoints: number 
   const rows = logs.rows
     .map(
       (row) => `<tr>
-<td>${escapeHtml(formatShanghaiTime(row.checkedAt))}</td>
-<td>${escapeHtml(row.accountName)}</td>
-<td>${escapeHtml(row.status)}</td>
-<td>${escapeHtml(String(row.points))}</td>
-<td>${escapeHtml(row.leftDays ?? "")}</td>
-<td>${escapeHtml(row.trigger)}</td>
-<td>${escapeHtml(row.message)}</td>
+<td class="col-time">${escapeHtml(formatShanghaiTime(row.checkedAt))}</td>
+<td class="col-account">${escapeHtml(row.accountName)}</td>
+<td class="col-status">${escapeHtml(row.status)}</td>
+<td class="col-points">${escapeHtml(String(row.points))}</td>
+<td class="col-days">${escapeHtml(row.leftDays ?? "")}</td>
+<td class="col-trigger">${escapeHtml(row.trigger)}</td>
+<td class="col-message">${escapeHtml(row.message)}</td>
 </tr>`
     )
     .join("");
@@ -93,23 +93,37 @@ export function buildLogHtml(logs: { rows: CheckinLogRow[]; totalPoints: number 
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>GLaDOS 签到日志</title>
 <style>
-body{font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;margin:24px;color:#172033;background:#f7f8fb}
-main{max-width:1120px;margin:0 auto}
+*{box-sizing:border-box}
+body{font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;margin:0;color:#172033;background:#f7f8fb}
+main{max-width:1440px;margin:0 auto;padding:24px}
 h1{font-size:24px;margin:0 0 12px}
 .summary{margin:0 0 18px;font-weight:600}
-table{width:100%;border-collapse:collapse;background:#fff}
-th,td{border:1px solid #d8deea;padding:8px;text-align:left;font-size:14px;vertical-align:top}
+.table-wrap{width:100%;overflow-x:auto;border:1px solid #d8deea;border-radius:8px;background:#fff}
+table{width:100%;min-width:1120px;border-collapse:collapse;background:#fff;table-layout:fixed}
+th,td{border-bottom:1px solid #d8deea;border-right:1px solid #d8deea;padding:10px;text-align:left;font-size:14px;vertical-align:top}
+th:last-child,td:last-child{border-right:0}
+tbody tr:last-child td{border-bottom:0}
 th{background:#eef2f8}
+.col-time{width:140px;white-space:nowrap}
+.col-account{width:260px;word-break:break-word}
+.col-status{width:150px;white-space:nowrap}
+.col-points{width:72px;white-space:nowrap}
+.col-days{width:84px;white-space:nowrap}
+.col-trigger{width:92px;white-space:nowrap}
+.col-message{width:auto;min-width:320px;line-height:1.45}
+@media (max-width:760px){main{padding:16px}.table-wrap{border-radius:6px}th,td{font-size:13px;padding:9px}}
 </style>
 </head>
 <body>
 <main>
 <h1>GLaDOS 签到日志</h1>
 <p class="summary">累计 Point：${escapeHtml(String(logs.totalPoints))}</p>
+<div class="table-wrap">
 <table>
-<thead><tr><th>日期时间</th><th>账号</th><th>状态</th><th>Point</th><th>剩余天数</th><th>触发</th><th>消息</th></tr></thead>
+<thead><tr><th class="col-time">日期时间</th><th class="col-account">账号</th><th class="col-status">状态</th><th class="col-points">Point</th><th class="col-days">剩余天数</th><th class="col-trigger">触发</th><th class="col-message">消息</th></tr></thead>
 <tbody>${rows || `<tr><td colspan="7">暂无记录</td></tr>`}</tbody>
 </table>
+</div>
 </main>
 </body>
 </html>`;
