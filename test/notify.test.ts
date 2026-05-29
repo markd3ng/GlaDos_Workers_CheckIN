@@ -26,6 +26,24 @@ describe("notification helpers", () => {
     expect(text).toContain("成功/已签到：1");
     expect(text).toContain("main：成功");
     expect(text).toContain("剩余 12.34 天");
+    expect(text).toContain("Cookie 状态：当前有效");
+    expect(text).toContain("Cookie 到期时间：未知");
+  });
+
+  it("marks expired cookies clearly in reports", () => {
+    const text = formatPlainReport({
+      ...report,
+      ok: false,
+      summary: { total: 1, ok: 0, failed: 0, expired: 1 },
+      results: [
+        {
+          accountName: "main",
+          checkin: { status: "expired", message: "Please login first" }
+        }
+      ]
+    });
+
+    expect(text).toContain("Cookie 状态：已失效");
   });
 
   it("creates signed DingTalk URLs", async () => {

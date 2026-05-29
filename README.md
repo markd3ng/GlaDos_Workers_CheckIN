@@ -198,6 +198,31 @@ GLADOS_ACCOUNTS='[
 
 Cookie 过期后，需要重新复制并更新 `GLADOS_ACCOUNTS`。
 
+## Cookie 有效期和自动刷新
+
+每日签到不会可靠地自动刷新并保存 Cookie。
+
+原因：
+
+- Worker 请求使用的是你配置在 `GLADOS_ACCOUNTS` 里的 Cookie。
+- 即使 GLaDOS 响应里返回新的 `Set-Cookie`，Worker 也不会自动写回 Cloudflare Secret。
+- 从浏览器复制出来的 `Cookie` 请求头通常只包含键值，不包含 `Expires` 或 `Max-Age`，所以程序无法知道精确到期时间。
+
+通知里会显示每个账号的 Cookie 当前状态：
+
+```text
+Cookie 状态：当前有效 / 已失效 / 未知
+Cookie 到期时间：未知
+```
+
+判断规则：
+
+- 签到成功或已签到：当前有效。
+- GLaDOS 返回登录失效、未授权、HTTP 401/403：已失效。
+- 网络错误或未知错误：未知。
+
+如果通知提示 Cookie 已失效，需要重新登录 GLaDOS，复制新的 Cookie，并更新 Cloudflare 里的 `GLADOS_ACCOUNTS`。
+
 ## 本地开发
 
 复制示例环境变量文件：

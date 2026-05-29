@@ -31,7 +31,9 @@ export function formatPlainReport(report: RunReport): string {
 function formatAccountLine(result: AccountRunResult): string {
   const label = statusLabel(result.checkin.status);
   const days = result.accountStatus?.leftDays ? `，剩余 ${result.accountStatus.leftDays} 天` : "";
-  return `${result.accountName}：${label}，${result.checkin.message}${days}`;
+  return `${result.accountName}：${label}，${result.checkin.message}${days}，Cookie 状态：${cookieStatusLabel(
+    result.checkin.status
+  )}，Cookie 到期时间：未知`;
 }
 
 function statusLabel(status: AccountRunResult["checkin"]["status"]): string {
@@ -47,3 +49,14 @@ function statusLabel(status: AccountRunResult["checkin"]["status"]): string {
   }
 }
 
+function cookieStatusLabel(status: AccountRunResult["checkin"]["status"]): string {
+  switch (status) {
+    case "success":
+    case "already_checked_in":
+      return "当前有效";
+    case "expired":
+      return "已失效";
+    case "failed":
+      return "未知";
+  }
+}
