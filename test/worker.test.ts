@@ -49,6 +49,12 @@ describe("worker routes", () => {
     expect(html).toContain("min-height:520px");
     expect(html).toContain("account-cell");
     expect(html).toContain("message-cell");
+    expect(html).toContain('class="endpoint-link" data-method="GET" data-action="/health"');
+    expect(html).toContain('class="endpoint-link" data-method="GET" data-action="/status"');
+    expect(html).toContain('class="endpoint-link" data-method="POST" data-action="/test"');
+    expect(html).toContain('class="endpoint-link" data-method="POST" data-action="/checkin"');
+    expect(html).toContain('class="endpoint-link" data-method="POST" data-action="/run"');
+    expect(html).toContain('class="endpoint-link" data-method="GET" data-action="/log"');
     expect(html).not.toContain("<form");
     expect(html).not.toContain("/trigger-checkin");
     expect(html).toContain("/status");

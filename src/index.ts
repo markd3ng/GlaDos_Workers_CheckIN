@@ -258,6 +258,9 @@ button{width:100%;border:1px solid #cfd8e6;background:#f8fafc;color:#172033;bord
 button:hover{background:#eef4ff;border-color:#9db6da}
 button:active{transform:translateY(1px)}
 button[disabled]{cursor:wait;opacity:.66}
+.endpoint-link{display:inline;width:auto;border:0;background:transparent;border-radius:0;padding:0;color:#5b21b6;text-decoration:underline;text-align:left;font:inherit;font-weight:700}
+.endpoint-link:hover{background:transparent;border-color:transparent;color:#3b0764}
+.endpoint-link:active{transform:none}
 .result-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:12px}
 .result-title{font-weight:700}
 .badge{display:inline-flex;align-items:center;min-height:26px;border-radius:999px;background:#edf1f7;color:#40506a;padding:3px 10px;font-size:13px}
@@ -320,12 +323,12 @@ code{background:#edf1f7;padding:2px 5px;border-radius:4px}
 <table>
 <thead><tr><th>端点</th><th>作用</th><th>调用方式</th></tr></thead>
 <tbody>
-<tr><td><a href="/health">/health</a></td><td>健康检查。</td><td><code>GET /health</code></td></tr>
-<tr><td>/status</td><td>只查询账号状态，用来检查 Cookie 当前是否有效和剩余天数。</td><td><code>GET /status</code></td></tr>
-<tr><td>/test</td><td>一次性测试签到、Cookie 有效性、通知渠道数量和推送效果。</td><td><code>POST /test</code></td></tr>
-<tr><td>/checkin</td><td>手动触发一次签到，不发送通知，除非加 <code>?notify=true</code>。</td><td><code>POST /checkin</code></td></tr>
-<tr><td>/run</td><td>手动执行完整签到并发送已启用的通知。</td><td><code>POST /run</code></td></tr>
-<tr><td><a href="/log">/log</a></td><td>查看 D1 签到日志。支持 <code>year</code> 和 <code>month</code> 筛选。</td><td><code>GET /log?year=2026&amp;month=05</code></td></tr>
+<tr><td><button type="button" class="endpoint-link" data-method="GET" data-action="/health">/health</button></td><td>健康检查。</td><td><code>GET /health</code></td></tr>
+<tr><td><button type="button" class="endpoint-link" data-method="GET" data-action="/status">/status</button></td><td>只查询账号状态，用来检查 Cookie 当前是否有效和剩余天数。</td><td><code>GET /status</code></td></tr>
+<tr><td><button type="button" class="endpoint-link" data-method="POST" data-action="/test">/test</button></td><td>一次性测试签到、Cookie 有效性、通知渠道数量和推送效果。</td><td><code>POST /test</code></td></tr>
+<tr><td><button type="button" class="endpoint-link" data-method="POST" data-action="/checkin">/checkin</button></td><td>手动触发一次签到，不发送通知，除非加 <code>?notify=true</code>。</td><td><code>POST /checkin</code></td></tr>
+<tr><td><button type="button" class="endpoint-link" data-method="POST" data-action="/run">/run</button></td><td>手动执行完整签到并发送已启用的通知。</td><td><code>POST /run</code></td></tr>
+<tr><td><button type="button" class="endpoint-link" data-method="GET" data-action="/log">/log</button></td><td>查看 D1 签到日志。支持 <code>year</code> 和 <code>month</code> 筛选。</td><td><code>GET /log?year=2026&amp;month=05</code></td></tr>
 </tbody>
 </table>
 </main>
