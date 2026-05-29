@@ -263,6 +263,19 @@ button[disabled]{cursor:wait;opacity:.66}
 .badge{display:inline-flex;align-items:center;min-height:26px;border-radius:999px;background:#edf1f7;color:#40506a;padding:3px 10px;font-size:13px}
 #result-body{min-height:234px;border:1px solid #dce3ef;border-radius:7px;background:#0f172a;color:#dbeafe;overflow:auto}
 .placeholder{display:grid;place-items:center;min-height:232px;color:#71809a;background:#f8fafc}
+.result-view{background:#fff;color:#172033;min-height:232px;padding:14px}
+.metric-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin-bottom:14px}
+.metric{border:1px solid #dce3ef;border-radius:7px;padding:10px;background:#f8fafc}
+.metric-label{font-size:12px;color:#66758f;margin-bottom:5px}
+.metric-value{font-size:20px;font-weight:760}
+.section-title{font-size:15px;font-weight:760;margin:14px 0 8px}
+.mini-table{border-radius:7px;margin:0 0 12px;font-size:13px}
+.mini-table th,.mini-table td{padding:9px 10px}
+.status-pill{display:inline-flex;border-radius:999px;padding:2px 8px;font-weight:700;font-size:12px;background:#edf1f7;color:#40506a}
+.status-ok{background:#dcfce7;color:#166534}
+.status-warn{background:#fef3c7;color:#92400e}
+.status-bad{background:#fee2e2;color:#991b1b}
+.muted{color:#66758f}
 pre{margin:0;padding:14px;white-space:pre-wrap;word-break:break-word;font-size:13px;line-height:1.55}
 iframe{display:block;width:100%;min-height:360px;border:0;background:#fff}
 table{width:100%;border-collapse:separate;border-spacing:0;background:#fff;margin-top:0;overflow:hidden;border:1px solid #d8deea;border-radius:8px}
@@ -348,6 +361,125 @@ function renderHtml(html) {
   resultBody.appendChild(frame);
 }
 
+function createEl(tag, className, text) {
+  const element = document.createElement(tag);
+  if (className) {
+    element.className = className;
+  }
+  if (text !== undefined) {
+    element.textContent = String(text);
+  }
+  return element;
+}
+
+function appendMetric(container, label, value) {
+  const metric = createEl('div', 'metric');
+  metric.appendChild(createEl('div', 'metric-label', label));
+  metric.appendChild(createEl('div', 'metric-value', value ?? '-'));
+  container.appendChild(metric);
+}
+
+function statusLabel(status) {
+  const labels = {
+    success: '成功',
+    already_checked_in: '已签到',
+    expired: 'Cookie 失效',
+    failed: '失败'
+  };
+  return labels[status] || status || '-';
+}
+
+function statusClass(status) {
+  if (status === 'success') return 'status-pill status-ok';
+  if (status === 'already_checked_in') return 'status-pill status-warn';
+  if (status === 'expired' || status === 'failed') return 'status-pill status-bad';
+  return 'status-pill';
+}
+
+function buildTable(headers, rows) {
+  const table = createEl('table', 'mini-table');
+  const thead = document.createElement('thead');
+  const headerRow = document.createElement('tr');
+  headers.forEach((header) => headerRow.appendChild(createEl('th', '', header)));
+  thead.appendChild(headerRow);
+  table.appendChild(thead);
+
+  const tbody = document.createElement('tbody');
+  rows.forEach((row) => {
+    const tr = document.createElement('tr');
+    row.forEach((cell) => {
+      const td = document.createElement('td');
+      if (cell instanceof Node) {
+        td.appendChild(cell);
+      } else {
+        td.textContent = String(cell ?? '-');
+      }
+      tr.appendChild(td);
+    });
+    tbody.appendChild(tr);
+  });
+  table.appendChild(tbody);
+  return table;
+}
+
+function renderRunReport(report) {
+  if (!report || typeof report !== 'object' || !report.summary || !Array.isArray(report.results)) {
+    renderText(JSON.stringify(report, null, 2), false);
+    return;
+  }
+
+  resultBody.innerHTML = '';
+  const view = createEl('div', 'result-view');
+  const metrics = createEl('div', 'metric-grid');
+  appendMetric(metrics, '账号总数', report.summary.total);
+  appendMetric(metrics, '成功账号', report.summary.ok);
+  appendMetric(metrics, '失败账号', report.summary.failed);
+  appendMetric(metrics, '失效账号', report.summary.expired);
+  view.appendChild(metrics);
+
+  view.appendChild(createEl('div', 'section-title', '账号结果'));
+  view.appendChild(
+    buildTable(
+      ['账号', '签到状态', 'HTTP', '剩余天数', '消息'],
+      report.results.map((item) => [
+        item.accountName,
+        createEl('span', statusClass(item.checkin?.status), statusLabel(item.checkin?.status)),
+        item.checkin?.httpStatus,
+        item.accountStatus?.leftDays,
+        item.checkin?.message
+      ])
+    )
+  );
+
+  const notificationSummary = report.notificationSummary || {};
+  view.appendChild(createEl('div', 'section-title', '通知结果'));
+  const notifyMetrics = createEl('div', 'metric-grid');
+  appendMetric(notifyMetrics, '已配置', notificationSummary.configured ?? 0);
+  appendMetric(notifyMetrics, '已尝试', notificationSummary.attempted ?? 0);
+  appendMetric(notifyMetrics, '成功', notificationSummary.succeeded ?? 0);
+  appendMetric(notifyMetrics, '失败', notificationSummary.failed ?? 0);
+  view.appendChild(notifyMetrics);
+
+  const notifications = Array.isArray(report.notifications) ? report.notifications : [];
+  if (notifications.length > 0) {
+    view.appendChild(
+      buildTable(
+        ['渠道', '状态', '错误'],
+        notifications.map((item) => [
+          item.channel,
+          createEl('span', item.ok ? 'status-pill status-ok' : 'status-pill status-bad', item.ok ? '成功' : '失败'),
+          item.error || '-'
+        ])
+      )
+    );
+  } else {
+    view.appendChild(createEl('div', 'muted', '本次没有发送通知。'));
+  }
+
+  view.appendChild(createEl('div', 'muted', '触发方式：' + (report.trigger || '-') + ' · 开始时间：' + (report.startedAt || '-')));
+  resultBody.appendChild(view);
+}
+
 buttons.forEach((button) => {
   button.addEventListener('click', async () => {
     const action = button.dataset.action;
@@ -356,11 +488,15 @@ buttons.forEach((button) => {
     try {
       const response = await fetch(action, { method, credentials: 'same-origin', headers: { Accept: 'application/json,text/html' } });
       const contentType = response.headers.get('Content-Type') || '';
-      const body = contentType.includes('text/html') ? await response.text() : JSON.stringify(await response.json(), null, 2);
       if (contentType.includes('text/html')) {
-        renderHtml(body);
+        renderHtml(await response.text());
       } else {
-        renderText(body, !response.ok);
+        const data = await response.json();
+        if (response.ok) {
+          renderRunReport(data);
+        } else {
+          renderText(JSON.stringify(data, null, 2), true);
+        }
       }
       setReady(response.ok ? '完成' : '失败 ' + response.status);
     } catch (error) {

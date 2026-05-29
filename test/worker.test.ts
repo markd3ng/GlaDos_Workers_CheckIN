@@ -41,6 +41,9 @@ describe("worker routes", () => {
     expect(html).toContain('data-action="/test"');
     expect(html).toContain('id="result-body"');
     expect(html).toContain("fetch(action");
+    expect(html).toContain("renderRunReport");
+    expect(html).toContain("账号结果");
+    expect(html).toContain("通知结果");
     expect(html).not.toContain("<form");
     expect(html).not.toContain("/trigger-checkin");
     expect(html).toContain("/status");
