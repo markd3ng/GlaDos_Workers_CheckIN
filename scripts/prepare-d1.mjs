@@ -33,7 +33,7 @@ function findExistingDatabase(databaseName) {
 }
 
 function createDatabase(databaseName) {
-  const output = runWrangler(["d1", "create", databaseName, "--json"]);
+  const output = runWrangler(["d1", "create", databaseName]);
   const databaseId = extractDatabaseId(output);
   if (!databaseId) {
     throw new Error(`Could not determine database_id after creating D1 database "${databaseName}"`);

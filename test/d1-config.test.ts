@@ -27,6 +27,14 @@ describe("D1 workflow config helpers", () => {
     expect(extractDatabaseId("created database 33333333-3333-3333-3333-333333333333")).toBe(
       "33333333-3333-3333-3333-333333333333"
     );
+    expect(
+      extractDatabaseId(`
+[[d1_databases]]
+binding = "DB"
+database_name = "glados-checkin"
+database_id = "44444444-4444-4444-4444-444444444444"
+`)
+    ).toBe("44444444-4444-4444-4444-444444444444");
   });
 
   it("uses an environment database name before falling back to wrangler config", async () => {
