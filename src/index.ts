@@ -1,7 +1,7 @@
 import { parseConfig } from "./config";
 import { runAccounts, summarizeResults } from "./glados";
 import { sendEnabledNotifications } from "./notify";
-import { markScheduledCheckinExecuted, shouldRunScheduledCheckin } from "./schedule";
+import { getNextScheduledCheckin, markScheduledCheckinExecuted, shouldRunScheduledCheckin } from "./schedule";
 import { buildLogHtml, listCheckinLogs, recordSuccessfulCheckins } from "./storage";
 import type { EnvLike, RunReport } from "./types";
 
@@ -115,6 +115,7 @@ async function executeRun(
     ok: results.every((result) => result.checkin.status !== "failed" && result.checkin.status !== "expired"),
     trigger,
     startedAt: new Date().toISOString(),
+    schedule: await getNextScheduledCheckin(env.CHECKIN_DB),
     summary: summarizeResults(results),
     results,
     notifications: [],
@@ -274,6 +275,8 @@ button[disabled]{cursor:wait;opacity:.66}
 #result-body{min-height:520px;border:1px solid #dce3ef;border-radius:7px;background:#0f172a;color:#dbeafe;overflow:auto}
 .placeholder{display:grid;place-items:center;min-height:520px;color:#71809a;background:#f8fafc}
 .result-view{background:#fff;color:#172033;min-height:520px;padding:14px}
+.schedule-info{border:1px solid #dce3ef;border-radius:7px;background:#f8fafc;padding:11px 12px;margin-bottom:14px;color:#40506a;font-weight:650}
+.schedule-info strong{color:#172033}
 .metric-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin-bottom:14px}
 .metric{border:1px solid #dce3ef;border-radius:7px;padding:10px;background:#f8fafc}
 .metric-label{font-size:12px;color:#66758f;margin-bottom:5px}
@@ -403,6 +406,33 @@ function appendMetric(container, label, value) {
   container.appendChild(metric);
 }
 
+function formatShanghaiTime(value) {
+  if (!value) {
+    return '-';
+  }
+  return new Intl.DateTimeFormat('zh-CN', {
+    timeZone: 'Asia/Shanghai',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    hour12: false
+  }).format(new Date(value));
+}
+
+function renderScheduleInfo(schedule) {
+  if (!schedule || !schedule.available) {
+    return createEl('div', 'schedule-info', '下次自动签到：不可用（未绑定 D1 调度表）');
+  }
+  const statusText = schedule.status === 'due' ? '已到计划时间，等待下一次 Cron 唤醒执行' : '等待计划时间';
+  const element = createEl('div', 'schedule-info');
+  element.appendChild(createEl('strong', '', '下次自动签到：'));
+  element.appendChild(document.createTextNode(formatShanghaiTime(schedule.targetTime) + '（北京时间） · ' + statusText));
+  return element;
+}
+
 function renderExchangePlans(results) {
   const plans = results.flatMap((item) => item.accountStatus?.exchangePlans || []);
   if (plans.length === 0) {
@@ -484,6 +514,7 @@ function renderRunReport(report) {
 
   resultBody.innerHTML = '';
   const view = createEl('div', 'result-view');
+  view.appendChild(renderScheduleInfo(report.schedule));
   const metrics = createEl('div', 'metric-grid');
   appendMetric(metrics, '账号总数', report.summary.total);
   appendMetric(metrics, '成功账号', report.summary.ok);
@@ -538,7 +569,7 @@ function renderRunReport(report) {
     view.appendChild(createEl('div', 'muted', '本次没有发送通知。'));
   }
 
-  view.appendChild(createEl('div', 'muted', '触发方式：' + (report.trigger || '-') + ' · 开始时间：' + (report.startedAt || '-')));
+  view.appendChild(createEl('div', 'muted', '触发方式：' + (report.trigger || '-') + ' · 开始时间：' + formatShanghaiTime(report.startedAt) + '（北京时间）'));
   resultBody.appendChild(view);
 }
 

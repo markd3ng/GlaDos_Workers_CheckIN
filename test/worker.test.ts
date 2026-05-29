@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import worker from "../src/index";
+import type { CheckinLogDatabase } from "../src/types";
 
 type JsonBody = {
   notifications?: unknown;
@@ -8,6 +9,11 @@ type JsonBody = {
     attempted: number;
     succeeded: number;
     failed: number;
+  };
+  schedule?: {
+    available: boolean;
+    targetTime?: string;
+    status?: string;
   };
   results?: Array<{ accountStatus?: { leftDays?: string; points?: string }; checkin?: { earnedPoints?: number } }>;
 };
@@ -53,6 +59,9 @@ describe("worker routes", () => {
     expect(html).toContain("签到收益");
     expect(html).toContain("Exchange Points");
     expect(html).toContain("renderExchangePlans");
+    expect(html).toContain("renderScheduleInfo");
+    expect(html).toContain("下次自动签到");
+    expect(html).toContain("formatShanghaiTime");
     expect(html).toContain("points/day");
     expect(html).toContain("Need ");
     expect(html).toContain("formatSignedPoints");
@@ -123,6 +132,25 @@ describe("worker routes", () => {
     expect(fetcher).toHaveBeenCalledTimes(2);
     expect(String(fetcher.mock.calls[0]?.[0])).toBe("https://glados.rocks/api/user/status");
     expect(String(fetcher.mock.calls[1]?.[0])).toBe("https://glados.rocks/api/user/points");
+  });
+
+  it("includes the next random schedule in run responses when D1 is enabled", async () => {
+    vi.spyOn(globalThis, "fetch")
+      .mockResolvedValueOnce(jsonResponse({ data: { leftDays: "30" } }))
+      .mockResolvedValueOnce(jsonResponse({ data: { points: "66.6000" } }));
+
+    const response = await worker.fetch(new Request("https://worker.test/status", { headers: { Authorization: basicAuth } }), {
+      ...env,
+      CHECKIN_DB: createScheduleDb()
+    });
+    const body = (await response.json()) as JsonBody;
+
+    expect(response.status).toBe(200);
+    expect(body.schedule).toMatchObject({
+      available: true,
+      status: "pending"
+    });
+    expect(body.schedule?.targetTime).toMatch(/^\d{4}-\d{2}-\d{2}T/);
   });
 
   it("runs checkin without notification on /checkin, tests configured notifications on /test, and notifies on /run", async () => {
@@ -216,4 +244,33 @@ function createMockDb(rows: Record<string, unknown>[] = []) {
       }))
     }))
   };
+}
+
+function createScheduleDb(): CheckinLogDatabase {
+  const rows = new Map<string, Record<string, unknown>>();
+  const db = {
+    prepare: vi.fn((sql: string) => ({
+      bind: vi.fn((...values: unknown[]) => ({
+        all: vi.fn(async () => {
+          if (sql.includes("scheduled_checkins")) {
+            const row = rows.get(String(values[0]));
+            return { results: row ? [row] : [] };
+          }
+          return { results: [] };
+        }),
+        run: vi.fn(async () => {
+          if (sql.includes("INSERT")) {
+            rows.set(String(values[0]), {
+              run_date: values[0],
+              target_time: values[1],
+              executed_at: null,
+              created_at: values[2]
+            });
+          }
+          return { success: true };
+        })
+      }))
+    }))
+  };
+  return db as unknown as CheckinLogDatabase;
 }

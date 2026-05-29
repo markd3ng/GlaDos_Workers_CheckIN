@@ -1,4 +1,4 @@
-import type { CheckinLogDatabase } from "./types";
+import type { CheckinLogDatabase, ScheduleInfo } from "./types";
 
 type ScheduleRow = {
   run_date: string;
@@ -31,7 +31,7 @@ export async function shouldRunScheduledCheckin(
 
   const now = options.now ?? new Date();
   const date = shanghaiDateParts(now);
-  const runDate = `${date.year}-${pad2(date.month)}-${pad2(date.day)}`;
+  const runDate = formatRunDate(date);
   const row = (await readSchedule(db, runDate)) ?? (await createSchedule(db, runDate, date, now, options));
 
   if (row.executed_at) {
@@ -54,6 +54,43 @@ export async function markScheduledCheckinExecuted(
     return;
   }
   await db.prepare("UPDATE scheduled_checkins SET executed_at = ? WHERE run_date = ?").bind(executedAt, runDate).run?.();
+}
+
+export async function getNextScheduledCheckin(
+  db: CheckinLogDatabase | undefined,
+  options: ScheduleOptions = {}
+): Promise<ScheduleInfo> {
+  if (!db) {
+    return { available: false, status: "missing_db" };
+  }
+
+  const now = options.now ?? new Date();
+  const today = shanghaiDateParts(now);
+  const todayRunDate = formatRunDate(today);
+  const todayRow =
+    (await readSchedule(db, todayRunDate)) ?? (await createSchedule(db, todayRunDate, today, now, options));
+
+  if (!todayRow.executed_at) {
+    return {
+      available: true,
+      status: now.getTime() >= Date.parse(todayRow.target_time) ? "due" : "pending",
+      runDate: todayRunDate,
+      targetTime: todayRow.target_time
+    };
+  }
+
+  const tomorrow = addShanghaiDays(today, 1);
+  const tomorrowRunDate = formatRunDate(tomorrow);
+  const tomorrowRow =
+    (await readSchedule(db, tomorrowRunDate)) ??
+    (await createSchedule(db, tomorrowRunDate, tomorrow, now, options));
+
+  return {
+    available: true,
+    status: "pending",
+    runDate: tomorrowRunDate,
+    targetTime: tomorrowRow.target_time
+  };
 }
 
 async function readSchedule(db: CheckinLogDatabase, runDate: string): Promise<ScheduleRow | undefined> {
@@ -114,6 +151,17 @@ function shanghaiDateParts(date: Date): { year: number; month: number; day: numb
     month: Number(parts.find((part) => part.type === "month")?.value),
     day: Number(parts.find((part) => part.type === "day")?.value)
   };
+}
+
+function addShanghaiDays(
+  date: { year: number; month: number; day: number },
+  days: number
+): { year: number; month: number; day: number } {
+  return shanghaiDateParts(new Date(Date.UTC(date.year, date.month - 1, date.day + days, 0)));
+}
+
+function formatRunDate(date: { year: number; month: number; day: number }): string {
+  return `${date.year}-${pad2(date.month)}-${pad2(date.day)}`;
 }
 
 function clampHour(value: number): number {

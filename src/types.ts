@@ -103,10 +103,18 @@ export type RunReport = {
   ok: boolean;
   trigger: "manual" | "scheduled";
   startedAt: string;
+  schedule?: ScheduleInfo;
   summary: Summary;
   results: AccountRunResult[];
   notifications: NotificationResult[];
   notificationSummary: NotificationSummary;
+};
+
+export type ScheduleInfo = {
+  available: boolean;
+  status: "missing_db" | "pending" | "due";
+  runDate?: string;
+  targetTime?: string;
 };
 
 export type Fetcher = typeof fetch;
