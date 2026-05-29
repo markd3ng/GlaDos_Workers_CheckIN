@@ -34,18 +34,14 @@ async function handleRequest(request: Request, env: EnvLike): Promise<Response> 
   const url = new URL(request.url);
 
   if (request.method === "GET" && url.pathname === "/") {
-    return json({
-      ok: true,
-      service: "glados-workers",
-      endpoints: ["GET /health", "GET /status", "POST /checkin", "POST /run"]
-    });
+    return html(renderIndexPage());
   }
 
   if (request.method === "GET" && url.pathname === "/health") {
     return json({ ok: true, service: "glados-workers" });
   }
 
-  if (!["/status", "/checkin", "/run", "/log"].includes(url.pathname)) {
+  if (!["/status", "/checkin", "/trigger-checkin", "/run", "/log"].includes(url.pathname)) {
     return json({ ok: false, error: "Not found" }, 404);
   }
 
@@ -72,7 +68,7 @@ async function handleRequest(request: Request, env: EnvLike): Promise<Response> 
     return json(await executeRun(env, "manual", getEnvString(env, "NOTIFY_ON_STATUS_ONLY")?.toLowerCase() === "true", true));
   }
 
-  if (url.pathname === "/checkin" && request.method === "POST") {
+  if ((url.pathname === "/checkin" || url.pathname === "/trigger-checkin") && request.method === "POST") {
     const shouldNotify = url.searchParams.get("notify") === "true";
     return json(await executeRun(env, "manual", shouldNotify));
   }
@@ -177,6 +173,44 @@ function html(body: string): Response {
   return new Response(body, {
     headers: { "Content-Type": "text/html;charset=UTF-8" }
   });
+}
+
+function renderIndexPage(): string {
+  return `<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>GLaDOS Workers Check-In</title>
+<style>
+body{font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;margin:24px;color:#172033;background:#f7f8fb}
+main{max-width:880px;margin:0 auto}
+h1{font-size:24px;margin:0 0 8px}
+p{line-height:1.6}
+table{width:100%;border-collapse:collapse;background:#fff;margin-top:16px}
+th,td{border:1px solid #d8deea;padding:10px;text-align:left;vertical-align:top}
+th{background:#eef2f8}
+code{background:#edf1f7;padding:2px 5px;border-radius:4px}
+</style>
+</head>
+<body>
+<main>
+<h1>GLaDOS Workers Check-In</h1>
+<p>定时签到由 Cloudflare Cron 自动执行。手动端点默认关闭；启用后需要 <code>ENABLE_MANUAL_ENDPOINTS=true</code> 和 <code>ADMIN_TOKEN</code>。</p>
+<table>
+<thead><tr><th>端点</th><th>作用</th><th>调用方式</th></tr></thead>
+<tbody>
+<tr><td><a href="/health">/health</a></td><td>健康检查。</td><td><code>GET /health</code></td></tr>
+<tr><td>/status</td><td>只查询账号状态，用来检查 Cookie 当前是否有效和剩余天数。</td><td><code>GET /status?token=YOUR_ADMIN_TOKEN</code></td></tr>
+<tr><td>/trigger-checkin</td><td>手动触发一次签到，不发送通知。适合验证 Cookie 是否能完成真实签到请求。</td><td><code>POST /trigger-checkin?token=YOUR_ADMIN_TOKEN</code></td></tr>
+<tr><td>/checkin</td><td><code>/trigger-checkin</code> 的兼容别名，不发送通知，除非加 <code>?notify=true</code>。</td><td><code>POST /checkin?token=YOUR_ADMIN_TOKEN</code></td></tr>
+<tr><td>/run</td><td>手动执行完整签到并发送已启用的通知。</td><td><code>POST /run?token=YOUR_ADMIN_TOKEN</code></td></tr>
+<tr><td><a href="/log">/log</a></td><td>查看 D1 签到日志。支持 <code>year</code> 和 <code>month</code> 筛选。</td><td><code>GET /log?token=YOUR_ADMIN_TOKEN&amp;year=2026&amp;month=05</code></td></tr>
+</tbody>
+</table>
+</main>
+</body>
+</html>`;
 }
 
 function safeError(error: unknown): string {
