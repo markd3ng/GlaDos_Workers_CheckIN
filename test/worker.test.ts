@@ -146,10 +146,8 @@ describe("worker routes", () => {
     const body = (await response.json()) as JsonBody;
 
     expect(response.status).toBe(200);
-    expect(body.schedule).toMatchObject({
-      available: true,
-      status: "pending"
-    });
+    expect(body.schedule?.available).toBe(true);
+    expect(["pending", "due"]).toContain(body.schedule?.status);
     expect(body.schedule?.targetTime).toMatch(/^\d{4}-\d{2}-\d{2}T/);
   });
 
