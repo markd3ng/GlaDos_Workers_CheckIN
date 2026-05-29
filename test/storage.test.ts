@@ -65,6 +65,8 @@ describe("checkin log storage", () => {
     expect(html).toContain("累计 Point");
     expect(html).toContain('<td class="col-account">main</td>');
     expect(html).toContain('<td class="col-points">2</td>');
+    expect(html).toContain("max-width:1760px");
+    expect(html).toContain("min-width:1320px");
     expect(html).toContain("table-layout:fixed");
     expect(html).toContain('class="table-wrap"');
     expect(html).toContain('class="col-time"');

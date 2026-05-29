@@ -95,11 +95,11 @@ export function buildLogHtml(logs: { rows: CheckinLogRow[]; totalPoints: number 
 <style>
 *{box-sizing:border-box}
 body{font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;margin:0;color:#172033;background:#f7f8fb}
-main{max-width:1440px;margin:0 auto;padding:24px}
+main{max-width:1760px;margin:0 auto;padding:24px}
 h1{font-size:24px;margin:0 0 12px}
 .summary{margin:0 0 18px;font-weight:600}
 .table-wrap{width:100%;overflow-x:auto;border:1px solid #d8deea;border-radius:8px;background:#fff}
-table{width:100%;min-width:1120px;border-collapse:collapse;background:#fff;table-layout:fixed}
+table{width:100%;min-width:1320px;border-collapse:collapse;background:#fff;table-layout:fixed}
 th,td{border-bottom:1px solid #d8deea;border-right:1px solid #d8deea;padding:10px;text-align:center;font-size:14px;vertical-align:middle;overflow-wrap:anywhere;word-break:normal}
 th:last-child,td:last-child{border-right:0}
 tbody tr:last-child td{border-bottom:0}
