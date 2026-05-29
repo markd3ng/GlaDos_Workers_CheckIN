@@ -246,13 +246,13 @@ function renderIndexPage(): string {
 <style>
 *{box-sizing:border-box}
 body{font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;margin:0;color:#172033;background:#f4f6fa}
-main{max-width:1040px;margin:0 auto;padding:28px 18px 44px}
+main{max-width:1440px;margin:0 auto;padding:28px 24px 44px}
 h1{font-size:26px;margin:0 0 10px}
 h2{font-size:18px;margin:0 0 14px}
 p{line-height:1.65;margin:0;color:#40506a}
 .panel{background:#fff;border:1px solid #dce3ef;border-radius:8px;padding:18px;box-shadow:0 10px 28px rgba(26,39,68,.07)}
 .hero{margin-bottom:18px}
-.workspace{display:grid;grid-template-columns:minmax(240px,320px) 1fr;gap:18px;margin-bottom:18px}
+.workspace{display:grid;grid-template-columns:minmax(260px,340px) minmax(0,1fr);gap:18px;margin-bottom:18px}
 .actions{display:grid;gap:10px}
 button{width:100%;border:1px solid #cfd8e6;background:#f8fafc;color:#172033;border-radius:7px;padding:11px 12px;text-align:left;font-weight:650;cursor:pointer;transition:background .15s,border-color .15s,transform .15s}
 button:hover{background:#eef4ff;border-color:#9db6da}
@@ -269,8 +269,14 @@ button[disabled]{cursor:wait;opacity:.66}
 .metric-label{font-size:12px;color:#66758f;margin-bottom:5px}
 .metric-value{font-size:20px;font-weight:760}
 .section-title{font-size:15px;font-weight:760;margin:14px 0 8px}
-.mini-table{border-radius:7px;margin:0 0 12px;font-size:13px}
+.mini-table{border-radius:7px;margin:0 0 12px;font-size:13px;table-layout:fixed}
 .mini-table th,.mini-table td{padding:9px 10px}
+.account-cell{width:260px;word-break:break-word}
+.status-cell{width:96px;white-space:nowrap}
+.http-cell,.days-cell{width:76px;white-space:nowrap}
+.message-cell{min-width:320px;line-height:1.45}
+.channel-cell{width:160px}
+.notify-status-cell{width:120px;white-space:nowrap}
 .status-pill{display:inline-flex;border-radius:999px;padding:2px 8px;font-weight:700;font-size:12px;background:#edf1f7;color:#40506a}
 .status-ok{background:#dcfce7;color:#166534}
 .status-warn{background:#fef3c7;color:#92400e}
@@ -283,7 +289,7 @@ th,td{border-bottom:1px solid #d8deea;padding:11px 12px;text-align:left;vertical
 tr:last-child td{border-bottom:0}
 th{background:#eef2f8}
 code{background:#edf1f7;padding:2px 5px;border-radius:4px}
-@media (max-width:760px){.workspace{grid-template-columns:1fr}main{padding:18px 12px 32px}table{font-size:14px}}
+@media (max-width:900px){.workspace{grid-template-columns:1fr}main{padding:18px 12px 32px}table{font-size:14px}.metric-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.mini-table{table-layout:auto}.account-cell,.status-cell,.http-cell,.days-cell,.message-cell,.channel-cell,.notify-status-cell{width:auto;min-width:0;white-space:normal}}
 </style>
 </head>
 <body>
@@ -396,19 +402,22 @@ function statusClass(status) {
   return 'status-pill';
 }
 
-function buildTable(headers, rows) {
+function buildTable(headers, rows, classes) {
   const table = createEl('table', 'mini-table');
   const thead = document.createElement('thead');
   const headerRow = document.createElement('tr');
-  headers.forEach((header) => headerRow.appendChild(createEl('th', '', header)));
+  headers.forEach((header, index) => headerRow.appendChild(createEl('th', classes?.[index] || '', header)));
   thead.appendChild(headerRow);
   table.appendChild(thead);
 
   const tbody = document.createElement('tbody');
   rows.forEach((row) => {
     const tr = document.createElement('tr');
-    row.forEach((cell) => {
+    row.forEach((cell, index) => {
       const td = document.createElement('td');
+      if (classes?.[index]) {
+        td.className = classes[index];
+      }
       if (cell instanceof Node) {
         td.appendChild(cell);
       } else {
@@ -447,7 +456,8 @@ function renderRunReport(report) {
         item.checkin?.httpStatus,
         item.accountStatus?.leftDays,
         item.checkin?.message
-      ])
+      ]),
+      ['account-cell', 'status-cell', 'http-cell', 'days-cell', 'message-cell']
     )
   );
 
@@ -469,7 +479,8 @@ function renderRunReport(report) {
           item.channel,
           createEl('span', item.ok ? 'status-pill status-ok' : 'status-pill status-bad', item.ok ? '成功' : '失败'),
           item.error || '-'
-        ])
+        ]),
+        ['channel-cell', 'notify-status-cell', 'message-cell']
       )
     );
   } else {

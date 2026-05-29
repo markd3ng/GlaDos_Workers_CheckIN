@@ -44,6 +44,10 @@ describe("worker routes", () => {
     expect(html).toContain("renderRunReport");
     expect(html).toContain("账号结果");
     expect(html).toContain("通知结果");
+    expect(html).toContain("max-width:1440px");
+    expect(html).toContain("grid-template-columns:minmax(260px,340px) minmax(0,1fr)");
+    expect(html).toContain("account-cell");
+    expect(html).toContain("message-cell");
     expect(html).not.toContain("<form");
     expect(html).not.toContain("/trigger-checkin");
     expect(html).toContain("/status");
