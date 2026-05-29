@@ -368,6 +368,8 @@ ADMIN_TOKEN=YOUR_ADMIN_TOKEN
 
 浏览器打开 `/` 或 `/log` 时会弹出用户名/密码输入框。用户名填 `ADMIN_USER`，密码填 `ADMIN_TOKEN`。
 
+打开 `/` 后可以直接点击页面按钮触发 `/status`、`/test`、`/checkin`、`/run`、`/log`；结果会显示在当前页面，不会跳转到原始 JSON 页面。
+
 如果没有配置 `ADMIN_TOKEN`，`/status`、`/test`、`/checkin`、`/run`、`/log` 会返回 `404`。`/health` 仍保留公开访问。
 
 ### 健康检查

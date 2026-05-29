@@ -38,7 +38,10 @@ describe("worker routes", () => {
     expect(response.headers.get("Content-Type")).toContain("text/html");
     expect(html).toContain("/log");
     expect(html).toContain("/test");
-    expect(html).toContain("<form");
+    expect(html).toContain('data-action="/test"');
+    expect(html).toContain('id="result-body"');
+    expect(html).toContain("fetch(action");
+    expect(html).not.toContain("<form");
     expect(html).not.toContain("/trigger-checkin");
     expect(html).toContain("/status");
   });
