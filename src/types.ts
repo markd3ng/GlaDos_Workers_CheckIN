@@ -31,8 +31,25 @@ export type AccountRunResult = {
   accountStatus?: {
     leftDays?: string;
     points?: string;
+    exchangePlans?: ExchangePlan[];
+    pointHistory?: PointHistoryItem[];
     message?: string;
   };
+};
+
+export type ExchangePlan = {
+  name: string;
+  points: number;
+  days: number;
+  pointsPerDay: string;
+  needMore: number;
+};
+
+export type PointHistoryItem = {
+  business: string;
+  change: string;
+  balance: string;
+  detail: string;
 };
 
 export type Summary = {

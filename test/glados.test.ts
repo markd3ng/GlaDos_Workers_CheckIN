@@ -53,12 +53,41 @@ describe("GLaDOS account operations", () => {
     const fetcher = vi
       .fn()
       .mockResolvedValueOnce(jsonResponse({ data: { leftDays: "12.3400" } }))
-      .mockResolvedValueOnce(jsonResponse({ data: { points: "88.5000" } }));
+      .mockResolvedValueOnce(
+        jsonResponse({
+          code: 0,
+          points: "42.0000000000000000",
+          history: [
+            {
+              business: "system:checkin",
+              change: "5.00000000",
+              balance: "42.0000000000000000",
+              detail: "2026-05-29"
+            }
+          ],
+          plans: {
+            plan100: { points: 100, days: 10 },
+            plan200: { points: 200, days: 30 },
+            plan500: { points: 500, days: 100 }
+          }
+        })
+      );
 
     const status = await checkAccountStatus(account, fetcher);
 
     expect(status?.leftDays).toBe("12.34");
-    expect(status?.points).toBe("88.5");
+    expect(status?.points).toBe("42");
+    expect(status?.exchangePlans).toEqual([
+      { name: "plan100", points: 100, days: 10, pointsPerDay: "10", needMore: 58 },
+      { name: "plan200", points: 200, days: 30, pointsPerDay: "6.66666667", needMore: 158 },
+      { name: "plan500", points: 500, days: 100, pointsPerDay: "5", needMore: 458 }
+    ]);
+    expect(status?.pointHistory?.[0]).toMatchObject({
+      business: "system:checkin",
+      change: "+5",
+      balance: "42",
+      detail: "2026-05-29"
+    });
     expect(fetcher).toHaveBeenNthCalledWith(
       1,
       "https://glados.rocks/api/user/status",

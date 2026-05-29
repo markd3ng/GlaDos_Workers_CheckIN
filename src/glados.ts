@@ -1,4 +1,4 @@
-import type { AccountConfig, AccountRunResult, CheckinStatus, Fetcher } from "./types";
+import type { AccountConfig, AccountRunResult, CheckinStatus, ExchangePlan, Fetcher, PointHistoryItem } from "./types";
 
 const CHECKIN_URL = "https://glados.rocks/api/user/checkin";
 const STATUS_URL = "https://glados.rocks/api/user/status";
@@ -63,15 +63,15 @@ export async function checkAccountStatus(
   }
 
   const leftDays = extractLeftDays(data);
-  const points = await checkAccountPoints(account, fetcher);
-  if (!leftDays && !points) {
+  const pointsInfo = await checkAccountPoints(account, fetcher);
+  if (!leftDays && !pointsInfo?.points) {
     return { message: safeMessage(data) || "Status response did not include remaining days or points" };
   }
 
-  return { leftDays, points };
+  return { leftDays, ...pointsInfo };
 }
 
-async function checkAccountPoints(account: AccountConfig, fetcher: Fetcher): Promise<string | undefined> {
+async function checkAccountPoints(account: AccountConfig, fetcher: Fetcher): Promise<AccountRunResult["accountStatus"] | undefined> {
   try {
     const response = await fetcher(POINTS_URL, {
       method: "GET",
@@ -81,7 +81,7 @@ async function checkAccountPoints(account: AccountConfig, fetcher: Fetcher): Pro
     if (!response.ok) {
       return undefined;
     }
-    return extractAccountPoints(data);
+    return extractPointsInfo(data);
   } catch {
     return undefined;
   }
@@ -215,12 +215,77 @@ function extractLeftDays(data: unknown): string | undefined {
   return Number.isInteger(numeric) ? String(numeric) : numeric.toFixed(8).replace(/\.?0+$/, "");
 }
 
+function extractPointsInfo(data: unknown): AccountRunResult["accountStatus"] | undefined {
+  const points = extractAccountPoints(data);
+  if (!points) {
+    return undefined;
+  }
+  return {
+    points,
+    exchangePlans: extractExchangePlans(data, Number.parseFloat(points)),
+    pointHistory: extractPointHistory(data)
+  };
+}
+
 function extractAccountPoints(data: unknown): string | undefined {
   const value = findPointValue(data);
   if (typeof value !== "string" && typeof value !== "number") {
     return undefined;
   }
   return normalizeNumericString(value);
+}
+
+function extractExchangePlans(data: unknown, currentPoints: number): ExchangePlan[] | undefined {
+  if (!isRecord(data) || !isRecord(data.plans)) {
+    return undefined;
+  }
+  return Object.entries(data.plans)
+    .map(([name, plan]) => {
+      if (!isRecord(plan)) {
+        return undefined;
+      }
+      const points = Number(plan.points);
+      const days = Number(plan.days);
+      if (!Number.isFinite(points) || !Number.isFinite(days) || points <= 0 || days <= 0) {
+        return undefined;
+      }
+      return {
+        name,
+        points,
+        days,
+        pointsPerDay: normalizeNumericString(points / days),
+        needMore: Math.max(0, points - Math.floor(currentPoints))
+      };
+    })
+    .filter((plan): plan is ExchangePlan => Boolean(plan))
+    .sort((left, right) => left.points - right.points);
+}
+
+function extractPointHistory(data: unknown): PointHistoryItem[] | undefined {
+  if (!isRecord(data) || !Array.isArray(data.history)) {
+    return undefined;
+  }
+  return data.history
+    .map((item) => {
+      if (!isRecord(item)) {
+        return undefined;
+      }
+      return {
+        business: String(item.business ?? ""),
+        change: formatChange(item.change),
+        balance: normalizeNumericString(String(item.balance ?? "")),
+        detail: String(item.detail ?? "")
+      };
+    })
+    .filter((item): item is PointHistoryItem => Boolean(item));
+}
+
+function formatChange(value: unknown): string {
+  const normalized = normalizeNumericString(String(value ?? "0"));
+  if (normalized.startsWith("-") || normalized === "0") {
+    return normalized;
+  }
+  return `+${normalized}`;
 }
 
 function findPointValue(value: unknown): unknown {

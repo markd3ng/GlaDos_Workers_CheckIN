@@ -272,6 +272,13 @@ button[disabled]{cursor:wait;opacity:.66}
 .metric-label{font-size:12px;color:#66758f;margin-bottom:5px}
 .metric-value{font-size:20px;font-weight:760}
 .section-title{font-size:15px;font-weight:760;margin:14px 0 8px}
+.exchange-panel{border:1px solid #dce3ef;border-radius:8px;margin:0 0 14px;background:#f8fafc;overflow:hidden}
+.exchange-head{font-size:15px;font-weight:760;padding:12px 14px;border-bottom:1px solid #dce3ef}
+.exchange-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;padding:14px}
+.exchange-card{border:1px solid #dce3ef;border-radius:7px;background:#fff;padding:16px;text-align:center}
+.exchange-title{font-weight:760;margin-bottom:4px}
+.exchange-rate{font-size:12px;color:#66758f;margin-bottom:18px}
+.exchange-need{font-weight:700;color:#66758f}
 .mini-table{border-radius:7px;margin:0 0 12px;font-size:13px;table-layout:fixed}
 .mini-table th,.mini-table td{padding:9px 10px}
 .account-cell{width:260px;word-break:break-word}
@@ -293,7 +300,7 @@ th,td{border-bottom:1px solid #d8deea;padding:11px 12px;text-align:left;vertical
 tr:last-child td{border-bottom:0}
 th{background:#eef2f8}
 code{background:#edf1f7;padding:2px 5px;border-radius:4px}
-@media (max-width:900px){.workspace{grid-template-columns:1fr}main{padding:18px 12px 32px}table{font-size:14px}.metric-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.mini-table{table-layout:auto}.account-cell,.status-cell,.http-cell,.days-cell,.points-cell,.earned-cell,.message-cell,.channel-cell,.notify-status-cell{width:auto;min-width:0;white-space:normal}}
+@media (max-width:900px){.workspace{grid-template-columns:1fr}main{padding:18px 12px 32px}table{font-size:14px}.metric-grid,.exchange-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.mini-table{table-layout:auto}.account-cell,.status-cell,.http-cell,.days-cell,.points-cell,.earned-cell,.message-cell,.channel-cell,.notify-status-cell{width:auto;min-width:0;white-space:normal}}
 </style>
 </head>
 <body>
@@ -389,6 +396,25 @@ function appendMetric(container, label, value) {
   container.appendChild(metric);
 }
 
+function renderExchangePlans(results) {
+  const plans = results.flatMap((item) => item.accountStatus?.exchangePlans || []);
+  if (plans.length === 0) {
+    return undefined;
+  }
+  const panel = createEl('div', 'exchange-panel');
+  panel.appendChild(createEl('div', 'exchange-head', 'Exchange Points'));
+  const grid = createEl('div', 'exchange-grid');
+  plans.slice(0, 3).forEach((plan) => {
+    const card = createEl('div', 'exchange-card');
+    card.appendChild(createEl('div', 'exchange-title', plan.points + ' -> ' + plan.days + ' Days'));
+    card.appendChild(createEl('div', 'exchange-rate', plan.pointsPerDay + ' points/day'));
+    card.appendChild(createEl('div', 'exchange-need', plan.needMore > 0 ? 'Need ' + plan.needMore + ' more' : 'Available'));
+    grid.appendChild(card);
+  });
+  panel.appendChild(grid);
+  return panel;
+}
+
 function statusLabel(status) {
   const labels = {
     success: '成功',
@@ -459,6 +485,10 @@ function renderRunReport(report) {
   view.appendChild(metrics);
 
   view.appendChild(createEl('div', 'section-title', '账号结果'));
+  const exchangePlans = renderExchangePlans(report.results);
+  if (exchangePlans) {
+    view.appendChild(exchangePlans);
+  }
   view.appendChild(
     buildTable(
       ['账号', '签到状态', 'HTTP', '剩余天数', '账号 Points', '签到收益', '消息'],

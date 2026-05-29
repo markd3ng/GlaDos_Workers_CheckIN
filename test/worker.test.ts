@@ -51,6 +51,10 @@ describe("worker routes", () => {
     expect(html).toContain("message-cell");
     expect(html).toContain("账号 Points");
     expect(html).toContain("签到收益");
+    expect(html).toContain("Exchange Points");
+    expect(html).toContain("renderExchangePlans");
+    expect(html).toContain("points/day");
+    expect(html).toContain("Need ");
     expect(html).toContain("formatSignedPoints");
     expect(html).toContain('class="endpoint-link" data-method="GET" data-action="/health"');
     expect(html).toContain('class="endpoint-link" data-method="GET" data-action="/status"');
