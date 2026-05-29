@@ -190,7 +190,7 @@ describe("worker routes", () => {
       .mockResolvedValueOnce(jsonResponse({ data: { leftDays: "10" } }))
       .mockResolvedValueOnce(jsonResponse({ data: { points: "99" } }));
 
-    await worker.scheduled({ cron: "0 0 * * *", scheduledTime: Date.now(), type: "scheduled" }, env, {
+    await worker.scheduled({ cron: "*/30 * * * *", scheduledTime: Date.now(), type: "scheduled" }, env, {
       waitUntil: vi.fn(),
       passThroughOnException: vi.fn(),
       props: {}

@@ -1,6 +1,7 @@
 import { parseConfig } from "./config";
 import { runAccounts, summarizeResults } from "./glados";
 import { sendEnabledNotifications } from "./notify";
+import { markScheduledCheckinExecuted, shouldRunScheduledCheckin } from "./schedule";
 import { buildLogHtml, listCheckinLogs, recordSuccessfulCheckins } from "./storage";
 import type { EnvLike, RunReport } from "./types";
 
@@ -21,7 +22,13 @@ const worker = {
 
   async scheduled(_controller: unknown, env: EnvLike, _ctx: ExecutionContextLike): Promise<void> {
     try {
-      await executeRun(env, "scheduled", true);
+      const decision = await shouldRunScheduledCheckin(env.CHECKIN_DB);
+      if (!decision.shouldRun) {
+        console.log(JSON.stringify({ event: "scheduled_skipped", reason: decision.reason, targetTime: decision.targetTime }));
+        return;
+      }
+      const report = await executeRun(env, "scheduled", true);
+      await markScheduledCheckinExecuted(env.CHECKIN_DB, decision.runDate, report.startedAt);
     } catch (error) {
       console.error(JSON.stringify({ event: "scheduled_failed", error: safeError(error) }));
     }
